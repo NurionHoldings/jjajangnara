@@ -1,0 +1,25 @@
+{
+  "product": "JJAJANGNARA",
+  "primary_api_host": "netlify",
+  "edge_host": "netlify",
+  "handoff_secret_policy": "netlify_env_sufficient",
+  "notices": [
+    {
+      "code": "NETLIFY_VS_API_HOST",
+      "severity": "info",
+      "summary": "JJAJANGNARA: Netlify env의 ARKAON_AGENT_HANDOFF_SECRET만으로 handoff 가능."
+    },
+    {
+      "code": "DEFER_PER_PLATFORM_OK",
+      "severity": "info",
+      "summary": "시크릿 미설정 시 폴백 가능. 추후 플랫폼별 분석 후 개별 적용해도 됩니다."
+    }
+  ],
+  "secret_hosts": [
+    {
+      "host": "netlify",
+      "role": "functions",
+      "handoff": "sufficient"
+    }
+  ]
+}
