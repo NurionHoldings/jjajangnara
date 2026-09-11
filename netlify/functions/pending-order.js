@@ -3,6 +3,7 @@ const {
   getPendingOrder,
   savePendingOrder,
 } = require("./_orders");
+const { isRc1Enabled } = require("./_rc1-orders");
 
 const responseHeaders = {
   "Content-Type": "application/json; charset=utf-8",
@@ -27,6 +28,13 @@ exports.handler = async function (event) {
 
   try {
     if (event.httpMethod === "POST") {
+      // fail-closed: 서버 RC1 ON이면 레거시 대기주문 생성 차단 (클라 캐시 OFF여도 실결제 경로 차단)
+      if (isRc1Enabled()) {
+        return json(503, {
+          message: "RC1 서버 주문이 활성화되어 레거시 대기주문을 받을 수 없습니다.",
+          code: "RC1_LEGACY_BLOCKED",
+        });
+      }
       const body = JSON.parse(event.body || "{}");
       const orderId = String(body.orderId || "").trim();
       if (!orderId || !body.order) {

@@ -1,0 +1,23 @@
+{
+    "product":  "JJAJANGNARA",
+    "api_host":  "netlify",
+    "secret_policy":  "netlify_env",
+    "phase":  "A",
+    "policy_packs":  [
+                         "arkaon-participation@phase-a",
+                         "arkaon-collab-rules@phase-a"
+                     ],
+    "notices":  [
+                    "Arkaon is observe/record/propose only.",
+                    "HQ alone confirms decisions and risk acceptance.",
+                    "No secrets in DNA/visits/reviews."
+                ],
+    "secret_hosts":  [
+
+                     ],
+    "aml":  {
+                "live_gate_wired":  false,
+                "enabled":  false,
+                "stub":  true
+            }
+}

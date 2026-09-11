@@ -1,4 +1,5 @@
 const { deletePendingOrder, savePaidOrder } = require("./_orders");
+const { isRc1Enabled } = require("./_rc1-orders");
 
 exports.handler = async function (event) {
   if (event.httpMethod !== "POST") {
@@ -24,6 +25,17 @@ exports.handler = async function (event) {
       return {
         statusCode: 400,
         body: JSON.stringify({ message: "paymentKey, orderId, amount, order are required." }),
+      };
+    }
+
+    // fail-closed: 서버 RC1 ON이면 레거시(클라이언트 order 본문) 승인 경로 전면 차단 (Slice 2 전)
+    if (isRc1Enabled()) {
+      return {
+        statusCode: 503,
+        body: JSON.stringify({
+          message: "RC1 모드에서는 레거시 toss-confirm 경로를 사용할 수 없습니다.",
+          code: "RC1_LEGACY_BLOCKED",
+        }),
       };
     }
 

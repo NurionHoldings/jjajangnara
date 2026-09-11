@@ -1019,8 +1019,14 @@
         cart = cart.filter(c => !(c.type==="single" && c.id===id));
         if(qty>0){
           const item = singles.find(s=>s.id===id);
+          const isLarge = String(id).endsWith("-large");
+          const menuId = isLarge ? id.slice(0, -"-large".length) : id;
           cart.push({
-            type:"single", id,
+            type:"single",
+            id,
+            menuId,
+            quantity: qty,
+            optionIds: isLarge ? ["large"] : [],
             name:item.name,
             price:item.price*qty,
             detail:`수량 ${qty}개`
@@ -1171,6 +1177,12 @@
 
     cart.push({
       type:"set",
+      setId: activeSetKey,
+      quantity: 1,
+      mains: picks.map(([_,v])=>({
+        mainId: v.mainId,
+        optionIds: v.double ? ["double"] : [],
+      })),
       name:R.title,
       price:total,
       detail:`${R.must} / 메인: ${mainsText}`
@@ -1259,9 +1271,14 @@
       }
 
       cart = cart.filter(entry=>!(entry.type === "single" && entry.id === item.id));
+      const isLarge = String(item.id).endsWith("-large");
+      const menuId = isLarge ? item.id.slice(0, -"-large".length) : item.id;
       cart.push({
         type:"single",
         id:item.id,
+        menuId,
+        quantity: qty,
+        optionIds: isLarge ? ["large"] : [],
         name:item.name,
         price:item.price * qty,
         detail:`수량 ${qty}개 · AI 음성 주문`
@@ -1322,10 +1339,29 @@
       return `${title}${upgrade}${optText}`;
     }).join(", ");
 
+    const mappedMains = payload.mains.map((main)=>({
+      mainId: main.mainId,
+      optionIds: main.opts?.gop ? ["double"] : [],
+    })).filter((main)=>main.mainId);
+
+    if(mappedMains.length !== rule.pick){
+      console.log("세트 메인 수량이 규칙과 맞지 않습니다.");
+      return false;
+    }
+
+    const menuExtra = mappedMains.reduce((sum, main)=>{
+      return sum + (mains.find((entry)=>entry.id === main.mainId)?.extra || 0);
+    }, 0);
+    const doubles = mappedMains.filter((main)=>main.optionIds.includes("double")).length;
+    const serverAlignedTotal = rule.price + menuExtra + doubles * EXTRA_DOUBLE;
+
     cart.push({
       type:"set",
+      setId: setKey,
+      quantity: 1,
+      mains: mappedMains,
       name: payload.setName || rule.title,
-      price: Number(payload.totalPrice) || rule.price,
+      price: serverAlignedTotal,
       detail: `${payload.tang?.title || rule.must} / 메인: ${mainsText}`
     });
     renderCart();
@@ -1345,22 +1381,154 @@
     }
   }
 
+  function isRc1ServerOrderEnabled(){
+    return paymentConfig.rc1ServerOrder === true;
+  }
+
+  function buildRc1ItemsFromCart(cartItems){
+    return cartItems.map((entry)=>{
+      if(entry.type === "set"){
+        if(!entry.setId || !Array.isArray(entry.mains) || entry.mains.length === 0){
+          throw new Error("세트 구성 정보가 부족합니다. 세트를 다시 담아 주세요.");
+        }
+        return {
+          setId: entry.setId,
+          quantity: Number(entry.quantity) || 1,
+          mains: entry.mains.map((main)=>({
+            mainId: main.mainId,
+            optionIds: Array.isArray(main.optionIds) ? main.optionIds : [],
+          })),
+        };
+      }
+
+      const isLarge = String(entry.id || "").endsWith("-large");
+      const menuId = entry.menuId || (isLarge ? String(entry.id).slice(0, -"-large".length) : entry.id);
+      const quantity = Number(entry.quantity);
+      let qty = Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
+      if(!qty && entry.detail){
+        const matched = String(entry.detail).match(/(\d+)\s*개/);
+        qty = matched ? Number(matched[1]) : 1;
+      }
+      if(!qty) qty = 1;
+
+      return {
+        menuId,
+        quantity: qty,
+        optionIds: Array.isArray(entry.optionIds)
+          ? entry.optionIds
+          : (isLarge ? ["large"] : []),
+      };
+    });
+  }
+
+  function buildRc1CheckoutDigest(orderMeta, items){
+    const payload = {
+      items,
+      utensils: orderMeta.utensils || "O",
+      address: String(orderMeta.address || "").trim(),
+      phone: String(orderMeta.phone || "").replace(/\D/g, ""),
+      request: String(orderMeta.request || "없음").trim() || "없음",
+    };
+    return JSON.stringify(payload);
+  }
+
+  function getOrCreateClientRequestId(digest){
+    const storageKey = "jjajangnara-rc1-checkout-attempt";
+    try{
+      const prev = JSON.parse(globalThis.sessionStorage.getItem(storageKey) || "null");
+      if(prev && prev.digest === digest && typeof prev.clientRequestId === "string" && prev.clientRequestId.length >= 8){
+        return prev.clientRequestId;
+      }
+    }catch(_error){
+      // ignore
+    }
+    const clientRequestId = `web_${crypto.randomUUID()}`;
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({ digest, clientRequestId, savedAt: new Date().toISOString() })
+    );
+    return clientRequestId;
+  }
+
+  async function createServerPendingOrder(orderMeta){
+    const items = buildRc1ItemsFromCart(orderMeta.cart);
+    const digest = buildRc1CheckoutDigest(orderMeta, items);
+    // 동일 장바구니·주소면 재클릭/응답 유실 재시도에 같은 clientRequestId 재사용
+    const clientRequestId = getOrCreateClientRequestId(digest);
+    const response = await fetch("/.netlify/functions/create-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": clientRequestId,
+      },
+      body: JSON.stringify({
+        items,
+        utensils: orderMeta.utensils,
+        address: orderMeta.address,
+        phone: orderMeta.phone,
+        request: orderMeta.request,
+        clientRequestId,
+      }),
+    });
+    const result = await response.json().catch(()=>({}));
+    if(!response.ok){
+      // fail-closed: 서버 플래그 OFF(RC1_DISABLED) 포함 — 레거시 경로로 절대 폴백하지 않는다.
+      const code = result.code ? ` [${result.code}]` : "";
+      throw new Error((result.message || "서버 주문 생성에 실패했습니다.") + code);
+    }
+    // 201 신규 · 200 재개(replay) 모두 허용 — checkoutToken 필수
+    if(!result.orderId || !result.checkoutToken || !(Number(result.amount) > 0)){
+      throw new Error("서버 주문 응답이 올바르지 않습니다.");
+    }
+    return result;
+  }
+
   async function requestTossPayment(orderData){
     const tossPayments = globalThis.TossPayments(paymentConfig.tossClientKey);
-    const orderId = createOrderId();
-    const pendingOrder = {
-      ...orderData,
-      orderId,
-      orderName: buildOrderName(orderData.cart),
-    };
+    const useRc1 = isRc1ServerOrderEnabled();
 
-    savePendingOrder(orderId, pendingOrder);
-    await backupPendingOrder(orderId, pendingOrder);
+    let orderId;
+    let amount;
+    let orderName;
+
+    if(useRc1){
+      // 클라 ON + 서버 OFF/실패 → 결제창 미개방. localStorage·레거시 pending으로 우회 금지.
+      const serverOrder = await createServerPendingOrder(orderData);
+      orderId = serverOrder.orderId;
+      amount = Number(serverOrder.amount);
+      orderName = serverOrder.orderName;
+      // 결제 금액은 서버 응답만 사용. 클라 cart.price / orderData.total 은 무시.
+      if(!(amount > 0) || amount !== Number(serverOrder.amount)){
+        throw new Error("서버 확정 금액이 유효하지 않습니다.");
+      }
+      globalThis.sessionStorage.setItem(
+        `jjajangnara-rc1-checkout:${orderId}`,
+        JSON.stringify({
+          orderId,
+          amount,
+          orderName,
+          checkoutToken: serverOrder.checkoutToken,
+          expiresAt: serverOrder.expiresAt,
+        })
+      );
+    }else{
+      // 클라 OFF: 기존 경로만 사용. create-order / checkoutToken 경로와 혼합하지 않는다.
+      orderId = createOrderId();
+      amount = Number(orderData.total);
+      orderName = buildOrderName(orderData.cart);
+      const pendingOrder = {
+        ...orderData,
+        orderId,
+        orderName,
+      };
+      savePendingOrder(orderId, pendingOrder);
+      await backupPendingOrder(orderId, pendingOrder);
+    }
 
     await tossPayments.requestPayment("카드", {
-      amount: orderData.total,
+      amount,
       orderId,
-      orderName: pendingOrder.orderName,
+      orderName,
       customerName: "짜장나라 주문 고객",
       customerMobilePhone: orderData.phone,
       successUrl: buildSuccessUrl(),
@@ -1445,13 +1613,15 @@
     };
 
     try{
+      // lastOrder는 표시/복구 참고용. RC1 ON 시 결제 금액·원장은 서버 응답만 사용한다.
       localStorage.setItem("lastOrder", JSON.stringify(orderData));
       await requestTossPayment(orderData);
     }catch(error){
       console.error(error);
+      const detail = error?.message ? ` (${error.message})` : "";
       setOrderSubmitStatus(
         "error",
-        "결제창을 여는 중 오류가 발생했습니다. 잠시 후 다시 시도하거나 매장으로 전화 주문해 주세요. 044-589-3888"
+        `주문을 생성하지 못해 결제창을 열지 않았습니다${detail}. 잠시 후 다시 시도하거나 매장으로 전화 주문해 주세요. 044-589-3888`
       );
     }finally{
       if(submitButton){

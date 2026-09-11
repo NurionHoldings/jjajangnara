@@ -1,0 +1,54 @@
+---
+description: Arkaon participation + Intent DNA + peer review for beom/GPT edits
+alwaysApply: true
+---
+
+# Arkaon participation contract (no authority expansion) ??JJAJANGNARA
+
+Arkaon handles ops audit/search context. When beom/GPT edit or analyze, leave admin notice, Change Intent DNA, and light peer review.
+Member/customer navigation DNA stays separate from change DNA.
+
+## Forbidden
+- No expanded payment/refund/sanction/PII mutate authority
+- No secrets/tokens/raw values in DNA/visits/reviews
+- ARKAON_AGENT_HANDOFF_SECRET / X-ARKAON-AGENT-KEY is a capability key (not a role)
+
+## Required procedure
+1. Announce visit before start (agent-visits/announce) ??purpose/areas/requests
+2. Search report / wake / no-touch / change-dna / cross-checks when possible
+3. After edits, record Change Intent DNA
+4. Meaningful changes: peer review (author != reviewer: beom<->gpt)
+5. Close visit at end
+
+## Wake
+Wake only while concurrent visitors are present; suggest edits, never auto-execute.
+
+## Host profile
+Check host-profile first. If API host exists (Railway etc.), secrets belong on API host.
+Netlify Functions-only products use Netlify env. Fallback: .arkaon/participation
+
+## API (this product)
+- Base: /api/admin/arkaon/participation
+- host-profile for secret-scope notice (values never printed)
+- Local fallback: .arkaon/participation/ or commit/session summary
+
+## Layers
+| Layer | Purpose |
+|-------|---------|
+| visit | visits/requests/work split |
+| change_dna | code change context |
+| cross_check | beom<->GPT peer review |
+| wake | concurrent presence |
+| readiness / no-touch | settings / banned prefixes |
+
+## Payment / AML pre-brief (required)
+
+Before payment/settlement/payout work, open AML guidance for this product.
+Arkaon may analyze and propose only. AML approval, payout/refund execution, status guessing, and secret/PII reporting are forbidden.
+Phase A keeps live payout gate unwired (INICIS_OPENMALL_AML_LIVE_GATE_WIRED=false).
+
+## Evidence-backed collaboration rules
+
+Record Work Contract scope, no-touch, completion criteria, and test plan before work.
+Do not report no_evidence/stalled as in-progress execution.
+Commits/tests/CI/deploy need reference + HEAD SHA proof. HQ alone confirms decisions and risk acceptance.
