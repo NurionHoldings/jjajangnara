@@ -1,0 +1,18 @@
+{
+    "order":  9,
+    "product":  "JJAJANGNARA",
+    "root":  "D:\\보관자료\\JJAJANGNARA",
+    "mode":  "netlify-static",
+    "api_base":  "/api/admin/arkaon/participation",
+    "api_host":  "netlify",
+    "applied_at":  "2026-09-11T13:11:21.4816085+09:00",
+    "actions":  [
+                    "rule",
+                    "contract",
+                    "host_profile",
+                    "phase_a_doc",
+                    "js_aml_stub",
+                    "env:created"
+                ],
+    "live_gate_wired":  false
+}

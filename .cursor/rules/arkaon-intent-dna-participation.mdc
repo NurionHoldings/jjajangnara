@@ -1,43 +1,54 @@
 ---
-description: 범/GPT 수정 시 아르카온 참관·방문·Change DNA·peer review 의무
+description: Arkaon participation + Intent DNA + peer review for beom/GPT edits
 alwaysApply: true
 ---
 
-# 아르카온 참관 계약 (권한 확장 아님) — JJAJANGNARA
+# Arkaon participation contract (no authority expansion) ??JJAJANGNARA
 
-아르카온은 **운영 감사·검색 맥락**을 담당한다. 범/GPT가 수정·분석할 때 **관리자 통보·Change Intent DNA·가벼운 peer review**를 남긴다.
-회원/고객 항해 DNA와 수정 DNA는 분리한다.
+Arkaon handles ops audit/search context. When beom/GPT edit or analyze, leave admin notice, Change Intent DNA, and light peer review.
+Member/customer navigation DNA stays separate from change DNA.
 
-## 금지
-- 결제·환불·제재·PII mutate 권한 확대 없음
-- 시크릿·토큰·실값을 DNA/방문/리뷰에 넣지 않음
-- `ARKAON_AGENT_HANDOFF_SECRET` / `X-ARKAON-AGENT-KEY` 는 capability 키(역할 아님)
+## Forbidden
+- No expanded payment/refund/sanction/PII mutate authority
+- No secrets/tokens/raw values in DNA/visits/reviews
+- ARKAON_AGENT_HANDOFF_SECRET / X-ARKAON-AGENT-KEY is a capability key (not a role)
 
-## 필수 절차
-1. 시작 전 방문 통보 (`agent-visits/announce`) — purpose·areas·requests
-2. 가능하면 report / wake / no-touch / change-dna / cross-checks 검색
-3. 수정 후 Change Intent DNA 기록 (summary, return_point, checklist, contract_pointers)
-4. 의미 있는 변경은 peer review 요청 (author ≠ reviewer: beom↔gpt)
-5. 종료 시 visit close
+## Required procedure
+1. Announce visit before start (agent-visits/announce) ??purpose/areas/requests
+2. Search report / wake / no-touch / change-dna / cross-checks when possible
+3. After edits, record Change Intent DNA
+4. Meaningful changes: peer review (author != reviewer: beom<->gpt)
+5. Close visit at end
 
 ## Wake
-접속자 동시 구간에만 깨어 감지·수정**제안**(자동 실행 아님).
+Wake only while concurrent visitors are present; suggest edits, never auto-execute.
 
-## Host profile 사전고지
-시작 전 `host-profile`(또는 report.host_profile) 확인.
-Netlify 공통이어도 API 본체(Railway 등)가 있으면 시크릿은 API 호스트에 필요.
-Netlify Functions만이면 Netlify env만으로 충분. 미설정 시 `.arkaon/participation` 폴백.
+## Host profile
+Check host-profile first. If API host exists (Railway etc.), secrets belong on API host.
+Netlify Functions-only products use Netlify env. Fallback: .arkaon/participation
 
-## API (이 제품)
-- Base: `/.netlify/functions/arkaon-participation`
-- `.../host-profile` — 호스트·시크릿 범위 사전고지 (값 비공개)
-- 로컬 API 불가 시: `.arkaon/participation/` 또는 커밋/세션 요약
+## API (this product)
+- Base: /api/admin/arkaon/participation
+- host-profile for secret-scope notice (values never printed)
+- Local fallback: .arkaon/participation/ or commit/session summary
 
-## 레이어
-| 레이어 | 용도 |
-|--------|------|
-| visit | 방문·요청·업무분장 |
-| change_dna | 코드 수정 맥락 |
-| cross_check | 범↔GPT peer review |
-| wake | 접속 동시 감지 |
-| readiness / no-touch | 설정 여부·금지 prefix |
+## Layers
+| Layer | Purpose |
+|-------|---------|
+| visit | visits/requests/work split |
+| change_dna | code change context |
+| cross_check | beom<->GPT peer review |
+| wake | concurrent presence |
+| readiness / no-touch | settings / banned prefixes |
+
+## Payment / AML pre-brief (required)
+
+Before payment/settlement/payout work, open AML guidance for this product.
+Arkaon may analyze and propose only. AML approval, payout/refund execution, status guessing, and secret/PII reporting are forbidden.
+Phase A keeps live payout gate unwired (INICIS_OPENMALL_AML_LIVE_GATE_WIRED=false).
+
+## Evidence-backed collaboration rules
+
+Record Work Contract scope, no-touch, completion criteria, and test plan before work.
+Do not report no_evidence/stalled as in-progress execution.
+Commits/tests/CI/deploy need reference + HEAD SHA proof. HQ alone confirms decisions and risk acceptance.

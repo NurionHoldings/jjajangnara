@@ -1,3 +1,1 @@
-# Local participation store for JJAJANGNARA
-API base: /.netlify/functions/arkaon-participation
-See host_profile.json for secret scope notices.
+Local ARKAON participation store for JJAJANGNARA. Phase A. No secrets.
