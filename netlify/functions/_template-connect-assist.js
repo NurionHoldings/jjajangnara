@@ -62,7 +62,7 @@ function buildBindPayload(input = {}) {
   const phoneLast4 = String(input.vendor?.phone_last4 || input.phoneLast4 || "").replace(/\D/g, "");
   const privacyAt = String(input.consents?.privacyAt || "").trim();
   const termsAt = String(input.consents?.termsAt || "").trim();
-  const connectAt = String(input.consents?.connectAt || privacyAt).trim();
+  const connectAt = String(input.consents?.connectAt || "").trim();
 
   if (action === "status") {
     return {
@@ -79,9 +79,14 @@ function buildBindPayload(input = {}) {
     };
   }
 
-  if (!privacyAt || !termsAt || !connectAt) {
-    const err = new Error("connect consents required");
+  if (!privacyAt || !termsAt) {
+    const err = new Error("privacy/terms consents required");
     err.code = "CONSENT_REQUIRED";
+    throw err;
+  }
+  if (!connectAt || connectAt === privacyAt) {
+    const err = new Error("distinct connectAt consent required");
+    err.code = "CONNECT_CONSENT_REQUIRED";
     throw err;
   }
   if (!vendorId) {
@@ -95,12 +100,20 @@ function buildBindPayload(input = {}) {
     throw err;
   }
 
+  const challengeToken = String(input.challengeToken || input.challenge_token || "").trim();
+  if (!challengeToken && input.dryRun !== true) {
+    const err = new Error("challenge_token required before bind");
+    err.code = "CHALLENGE_REQUIRED";
+    throw err;
+  }
+
   return {
     dry_run: input.dryRun === true,
     action: "bind",
     template,
     vendor: { vendor_id: vendorId, phone_last4: phoneLast4 },
     consents: { privacyAt, termsAt, connectAt },
+    challenge_token: challengeToken || undefined,
     assist: {
       mode: "template_instance_bind_v1",
       channels: ["menu_sync_snapshot", "order_webhook_ready", "pos_bridge_hint"],

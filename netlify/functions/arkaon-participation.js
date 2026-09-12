@@ -13,6 +13,14 @@ const {
   planOnboarding,
 } = require("./_arkaon-platform-onboarding");
 const {
+  assertNoTouchForExecute,
+  authFailureStatus,
+  authOk,
+  hasOpenVisit,
+  requirePlatformId,
+  stripSecrets,
+} = require("./_arkaon-guards");
+const {
   describeConnectorReadiness: describeDosirakReadiness,
   postVendorDraft,
 } = require("./_dosirak-vendor-draft-connector");
@@ -28,6 +36,7 @@ const {
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
+const REQUIRE_OPEN_VISIT = String(process.env.ARKAON_REQUIRE_OPEN_VISIT || "").trim() === "1";
 
 const headers = {
   "Content-Type": "application/json; charset=utf-8",
@@ -51,6 +60,7 @@ function loadStore() {
       change_dna: [],
       cross_checks: [],
       onboarding_dna: [],
+      template_bind_dna: [],
       template_binds: [],
       wake: { status: "asleep", last_traffic_at: null },
     };
@@ -60,16 +70,6 @@ function loadStore() {
 function saveStore(store) {
   fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
   fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
-}
-
-function authOk(event) {
-  const expected = String(process.env.ARKAON_AGENT_HANDOFF_SECRET || "").trim();
-  const provided = String(
-    (event.headers && (event.headers["x-arkaon-agent-key"] || event.headers["X-ARKAON-AGENT-KEY"])) || ""
-  ).trim();
-  if (expected.length < 16) return true;
-  if (provided.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
 }
 
 function loadHostProfile() {
@@ -97,20 +97,30 @@ function id() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
 }
 
-function stripSecrets(value) {
-  const text = JSON.stringify(value);
-  if (/sk_live|sk_test|password|accountNumber|주민/i.test(text)) {
-    return { redacted: true };
+function guardExecute(store, body) {
+  assertNoTouchForExecute(body);
+  if (REQUIRE_OPEN_VISIT && !hasOpenVisit(store)) {
+    const err = new Error("open agent visit required before execute");
+    err.code = "VISIT_REQUIRED";
+    throw err;
   }
-  return value;
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
-  if (!authOk(event)) return json(401, { success: false, message: "unauthorized" });
+  if (!authOk(event)) {
+    return json(authFailureStatus(), {
+      success: false,
+      message: "unauthorized",
+      code: authFailureStatus() === 503 ? "AGENT_SECRET_MISSING" : "UNAUTHORIZED",
+      hint: "Set ARKAON_AGENT_HANDOFF_SECRET (≥16). Local only: ARKAON_DEV_FAIL_OPEN=1",
+    });
+  }
 
   const store = loadStore();
   if (!Array.isArray(store.onboarding_dna)) store.onboarding_dna = [];
+  if (!Array.isArray(store.template_bind_dna)) store.template_bind_dna = [];
+  if (!Array.isArray(store.template_binds)) store.template_binds = [];
 
   const qs = event.queryStringParameters || {};
   const action = qs.action || "wake";
@@ -159,15 +169,15 @@ exports.handler = async (event) => {
       return json(400, { success: false, message: "command required", code: "COMMAND_REQUIRED" });
     }
     const plan = planOnboarding(command);
+    const dnaLayer = plan.intent === "TEMPLATE_CONNECT" ? "template_bind_dna" : "onboarding_dna";
     const row = {
       id: id(),
-      layer: "onboarding_dna",
+      layer: dnaLayer,
       command: command.slice(0, 200),
       ok: Boolean(plan.ok),
       intent: plan.intent || null,
       platformId: plan.platform?.id || null,
       code: plan.code || null,
-      // 시크릿·계좌·주민번호 등 저장 금지
       planSummary: stripSecrets({
         mode: plan.mode,
         playbook: plan.playbook,
@@ -178,13 +188,18 @@ exports.handler = async (event) => {
       }),
       created_at: new Date().toISOString(),
     };
-    store.onboarding_dna.push(row);
+    if (dnaLayer === "template_bind_dna") store.template_bind_dna.push(row);
+    else store.onboarding_dna.push(row);
     saveStore(store);
     return json(plan.ok ? 200 : 422, { success: plan.ok, data: plan, dnaId: row.id });
   }
 
   if (event.httpMethod === "GET" && action === "onboarding-dna") {
     return json(200, { success: true, data: store.onboarding_dna.slice(-50).reverse() });
+  }
+
+  if (event.httpMethod === "GET" && action === "template-bind-dna") {
+    return json(200, { success: true, data: store.template_bind_dna.slice(-50).reverse() });
   }
 
   if (event.httpMethod === "GET" && action === "connector-readiness") {
@@ -194,6 +209,13 @@ exports.handler = async (event) => {
         dosirak: describeDosirakReadiness(),
         aibaeby: describeAibaebyReadiness(),
         templateConnect: describeConnectReadiness(),
+        auth: {
+          agentSecretConfigured:
+            String(process.env.ARKAON_AGENT_HANDOFF_SECRET || "").trim().length >= 16,
+          requireOpenVisit: REQUIRE_OPEN_VISIT,
+          storeDurable: false,
+          storeNote: "Netlify Functions filesystem is ephemeral; treat DNA as session/local ledger",
+        },
         note: "draft=신규 입점, template-connect=기존 업체 실연동. 정산·지급 실행 없음.",
       },
     });
@@ -201,16 +223,19 @@ exports.handler = async (event) => {
 
   /**
    * Existing template instance ↔ existing vendor bind (dosirak | aibaeby).
-   * Body: { platformId, action?, vendor:{vendor_id,phone_last4}, consents:{privacyAt,termsAt,connectAt}, dryRun? }
    */
   if (event.httpMethod === "POST" && action === "template-connect-execute") {
-    const platformId = String(body.platformId || body.platform || "").trim();
-    if (platformId !== "dosirak.store" && platformId !== "aibaeby.com") {
-      return json(422, {
-        success: false,
-        code: "PLATFORM_NOT_WIRED",
-        message: "template-connect는 dosirak.store / aibaeby.com 만 지원",
-      });
+    try {
+      guardExecute(store, body);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+
+    let platformId;
+    try {
+      platformId = requirePlatformId(body, ["dosirak.store", "aibaeby.com"]);
+    } catch (error) {
+      return json(422, { success: false, code: error.code, message: error.message });
     }
 
     const result = await postTemplateBind({
@@ -224,13 +249,23 @@ exports.handler = async (event) => {
       merchant: body.merchant || {},
       bindToken: body.bindToken || body.bind_token,
       bindId: body.bindId || body.bind_id,
+      challengeToken: body.challengeToken || body.challenge_token,
     });
 
     const assist = buildConnectAssistProfile(result);
-    if (!Array.isArray(store.template_binds)) store.template_binds = [];
+    // never echo full bind_token into DNA; response may include once for caller
+    const safeResult = { ...result };
+    if (safeResult.bind_token) {
+      safeResult.bind_token_fp = crypto
+        .createHash("sha256")
+        .update(String(safeResult.bind_token))
+        .digest("hex")
+        .slice(0, 16);
+    }
+
     const row = {
       id: id(),
-      layer: "onboarding_dna",
+      layer: "template_bind_dna",
       kind: "template_instance_bind",
       platformId,
       ok: Boolean(result.ok),
@@ -241,36 +276,55 @@ exports.handler = async (event) => {
         bind_status: result.bind_status || null,
         resume_url: result.resume_url || null,
         assist,
+        bind_token_fp: safeResult.bind_token_fp || null,
       }),
       created_at: new Date().toISOString(),
     };
-    store.onboarding_dna.push(row);
+    store.template_bind_dna.push(row);
     if (result.ok && result.bind_id) {
       store.template_binds.push({
         id: row.id,
         platformId,
         bind_id: result.bind_id,
         bind_status: result.bind_status,
-        // bind_token 원문 저장 금지 — fingerprint만
-        bind_token_fp: result.bind_token
-          ? require("crypto").createHash("sha256").update(String(result.bind_token)).digest("hex").slice(0, 16)
-          : null,
+        bind_token_fp: safeResult.bind_token_fp || null,
         created_at: row.created_at,
       });
     }
     saveStore(store);
 
-    const softFail = ["CONSENT_REQUIRED", "VENDOR_REQUIRED", "PHONE_PROOF_REQUIRED"].includes(result.code);
+    const softFail = [
+      "CONSENT_REQUIRED",
+      "CONNECT_CONSENT_REQUIRED",
+      "VENDOR_REQUIRED",
+      "PHONE_PROOF_REQUIRED",
+      "CHALLENGE_REQUIRED",
+    ].includes(result.code);
     const status = result.ok ? 200 : softFail ? 400 : 422;
-    return json(status, { success: result.ok, data: { ...result, assist }, dnaId: row.id });
+    return json(status, {
+      success: result.ok,
+      data: { ...result, assist, bind_token_fp: safeResult.bind_token_fp || null },
+      dnaId: row.id,
+    });
   }
 
   /**
    * Consent-gated affiliate draft execute (dosirak.store | aibaeby.com).
-   * Body: { platformId, consents:{privacyAt,termsAt}, merchant:{phone,...}, dryRun? }
    */
   if (event.httpMethod === "POST" && action === "onboarding-execute") {
-    const platformId = String(body.platformId || body.platform || "dosirak.store").trim();
+    try {
+      guardExecute(store, body);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+
+    let platformId;
+    try {
+      platformId = requirePlatformId(body, ["dosirak.store", "aibaeby.com"]);
+    } catch (error) {
+      return json(422, { success: false, code: error.code, message: error.message });
+    }
+
     let result;
     if (platformId === "dosirak.store") {
       result = await postVendorDraft({
@@ -279,17 +333,11 @@ exports.handler = async (event) => {
         merchant: body.merchant || {},
         memo: body.memo,
       });
-    } else if (platformId === "aibaeby.com") {
+    } else {
       result = await postMerchantDraft({
         dryRun: body.dryRun === true,
         consents: body.consents || {},
         merchant: body.merchant || {},
-      });
-    } else {
-      return json(422, {
-        success: false,
-        code: "PLATFORM_NOT_WIRED",
-        message: "Phase A execute는 dosirak.store / aibaeby.com 만 지원",
       });
     }
 
@@ -339,13 +387,23 @@ exports.handler = async (event) => {
     if (row.agent !== "beom" && row.agent !== "gpt") {
       return json(400, { success: false, message: "agent beom|gpt" });
     }
-    store.visits.push(row);
+    store.visits.push(stripSecrets(row));
+    saveStore(store);
+    return json(200, { success: true, data: row });
+  }
+
+  if (event.httpMethod === "POST" && action === "agent-visits-close") {
+    const visitId = String(body.id || "").trim();
+    const row = store.visits.find((v) => v.id === visitId);
+    if (!row) return json(404, { success: false, message: "not found" });
+    row.status = "closed";
+    row.closed_at = new Date().toISOString();
     saveStore(store);
     return json(200, { success: true, data: row });
   }
 
   if (event.httpMethod === "POST" && action === "change-intent-dna") {
-    const row = {
+    const row = stripSecrets({
       id: id(),
       source: String(body.source || "beom").toLowerCase(),
       area: String(body.area || "ops").toLowerCase(),
@@ -355,7 +413,7 @@ exports.handler = async (event) => {
       contract_pointers: body.contract_pointers || [],
       path_prefixes: body.path_prefixes || [],
       created_at: new Date().toISOString(),
-    };
+    });
     store.change_dna.push(row);
     saveStore(store);
     return json(200, { success: true, data: row });

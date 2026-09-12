@@ -67,14 +67,33 @@ function detectPlatform(text, manifest) {
 function detectIntent(text, manifest) {
   const t = normalizeText(text);
   const intents = manifest.commandIntents || [];
+  const hits = [];
   for (const row of intents) {
     for (const alias of row.aliases || []) {
       if (t.includes(normalizeText(alias))) {
-        return row.intent;
+        hits.push(row.intent);
+        break;
       }
     }
   }
-  return null;
+  const unique = [...new Set(hits)];
+  if (unique.length === 0) return { intent: null, ambiguous: false, candidates: [] };
+  if (unique.length > 1) {
+    // "입점" + "실연동/연동" together → prefer TEMPLATE_CONNECT only if connect-specific alias hit
+    const connectHit = unique.includes("TEMPLATE_CONNECT");
+    const onboardHit = unique.includes("PLATFORM_ONBOARD");
+    if (connectHit && onboardHit) {
+      const connectAliases = (intents.find((r) => r.intent === "TEMPLATE_CONNECT")?.aliases || []).map(
+        (a) => normalizeText(a)
+      );
+      const strongConnect = connectAliases.some(
+        (a) => a && t.includes(a) && a !== "이미 입점" && !["입점", "입점해줘"].includes(a)
+      );
+      if (strongConnect) return { intent: "TEMPLATE_CONNECT", ambiguous: false, candidates: unique };
+      return { intent: null, ambiguous: true, candidates: unique };
+    }
+  }
+  return { intent: unique[0], ambiguous: false, candidates: unique };
 }
 
 function buildTemplateMerchantProfile() {
@@ -105,8 +124,19 @@ function planOnboarding(commandText) {
   }
 
   const noTouch = loadNoTouch();
-  const intent = detectIntent(commandText, manifest);
+  const intentInfo = detectIntent(commandText, manifest);
+  const intent = intentInfo && typeof intentInfo === "object" ? intentInfo.intent : intentInfo;
   const platform = detectPlatform(commandText, manifest);
+
+  if (intentInfo && intentInfo.ambiguous) {
+    return {
+      ok: false,
+      code: "INTENT_AMBIGUOUS",
+      message: "입점(draft)과 실연동(bind) 의도가 함께 감지되었습니다. 하나를 지정해 주세요.",
+      candidates: intentInfo.candidates,
+      hint: ["도시락 입점해줘", "도시락 실연동"],
+    };
+  }
 
   if (!intent) {
     return {
@@ -222,7 +252,7 @@ function planOnboarding(commandText) {
     nextActions,
     forbidden: manifest.authority?.forbidden || [],
     noTouchActions: noTouch.bannedActions || [],
-    dnaLayer: intent === "TEMPLATE_CONNECT" ? "onboarding_dna" : "onboarding_dna",
+    dnaLayer: intent === "TEMPLATE_CONNECT" ? "template_bind_dna" : "onboarding_dna",
     navigationDnaSeparate: true,
   };
 }

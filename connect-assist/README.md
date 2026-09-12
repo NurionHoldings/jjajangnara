@@ -11,10 +11,17 @@
 ## 흐름
 
 1. 플랫폼 지정 + Intent `실연동` / `템플릿 연결`
-2. 사업주 동의 (`privacy` / `terms` / `connect`)
-3. 기존 `vendor_id` + `phone_last4` 증명
-4. `POST .../api/template-bind` → `bind_token` + assist 프로필
-5. 이 폴더의 설정으로 상태 조회·메뉴 스냅샷·포스 브릿지 힌트만 수행 (정산 금지)
+2. 사업주 동의 (`privacy` / `terms` / **distinct `connect`**)
+3. `action=challenge` → `challenge_token`
+4. 기존 `vendor_id` + `phone_last4` 증명과 함께 bind
+5. `bind_token`은 env에만 보관 (파일·DNA 금지)
+6. 상태 조회:
+
+```bash
+BIND_TOKEN=... DOSIRAK_TEMPLATE_BIND_URL=... DOSIRAK_AFFILIATE_CONNECTOR_SECRET=... \
+  node connect-assist/status.mjs --platform dosirak
+```
+
 
 ## API (템플릿 쪽)
 

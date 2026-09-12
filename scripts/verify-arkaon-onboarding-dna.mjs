@@ -1,12 +1,15 @@
 /**
- * Arkaon Platform Onboarding DNA — Phase A verify
+ * Arkaon Platform Onboarding DNA — Phase A verify (hardened)
  */
 import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 
+process.env.ARKAON_DEV_FAIL_OPEN = "1";
+
 const require = createRequire(import.meta.url);
 const planner = require("../netlify/functions/_arkaon-platform-onboarding.js");
 const arkaon = require("../netlify/functions/arkaon-participation.js");
+const guards = require("../netlify/functions/_arkaon-guards.js");
 
 function pass(name) {
   console.log(`PASS  ${name}`);
@@ -194,14 +197,73 @@ async function run() {
       vendor: { vendor_id: "v_existing", phone_last4: "5678" },
       consents: {
         privacyAt: "2026-09-12T00:00:00.000Z",
-        termsAt: "2026-09-12T00:00:00.000Z",
-        connectAt: "2026-09-12T00:00:00.000Z",
+        termsAt: "2026-09-12T00:00:01.000Z",
+        connectAt: "2026-09-12T00:00:02.000Z",
       },
     }),
   });
   assert.equal(connectExec.statusCode, 422);
   assert.equal(JSON.parse(connectExec.body).data.code, "CONNECTOR_ENV_MISSING");
   pass("API template-connect-execute fail-closed without env");
+
+  const noPlatform = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "onboarding-execute" },
+    headers: {},
+    body: JSON.stringify({
+      dryRun: true,
+      consents: { privacyAt: "a", termsAt: "b" },
+      merchant: { phone: "01012345678" },
+    }),
+  });
+  assert.equal(noPlatform.statusCode, 422);
+  assert.equal(JSON.parse(noPlatform.body).code, "PLATFORM_REQUIRED");
+  pass("onboarding-execute requires platformId");
+
+  const ambiguous = planner.planOnboarding("도시락 이미 입점");
+  assert.equal(ambiguous.ok, false);
+  assert.equal(ambiguous.code, "INTENT_AMBIGUOUS");
+  pass("ambiguous 입점+이미입점 → INTENT_AMBIGUOUS");
+
+  const noTouchHit = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "onboarding-execute" },
+    headers: {},
+    body: JSON.stringify({
+      platformId: "dosirak.store",
+      dryRun: true,
+      account_number: "123",
+      consents: { privacyAt: "a", termsAt: "b" },
+      merchant: { phone: "01012345678" },
+    }),
+  });
+  assert.equal(noTouchHit.statusCode, 403);
+  assert.equal(JSON.parse(noTouchHit.body).code, "NO_TOUCH_BLOCKED");
+  pass("execute blocked by no-touch finance field");
+
+  const visit = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "agent-visits-announce" },
+    headers: {},
+    body: JSON.stringify({ agent: "gpt", purpose: "hardening" }),
+  });
+  assert.equal(visit.statusCode, 200);
+  const visitId = JSON.parse(visit.body).data.id;
+  const closed = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "agent-visits-close" },
+    headers: {},
+    body: JSON.stringify({ id: visitId }),
+  });
+  assert.equal(closed.statusCode, 200);
+  assert.equal(JSON.parse(closed.body).data.status, "closed");
+  pass("agent-visits-close");
+
+  delete process.env.ARKAON_DEV_FAIL_OPEN;
+  delete process.env.ARKAON_AGENT_HANDOFF_SECRET;
+  assert.equal(guards.authOk({ headers: {} }), false);
+  pass("agent auth fail-closed without secret");
+  process.env.ARKAON_DEV_FAIL_OPEN = "1";
 
   console.log("\nArkaon onboarding DNA verify: PASS");
 }

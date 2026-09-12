@@ -14,10 +14,13 @@
     "main_merge_without_hq",
     "deploy_without_hq",
     "scrape_non_affiliate_delivery_platform",
-    "auto_accept_tos_without_merchant_click"
+    "auto_accept_tos_without_merchant_click",
+    "template_bind_without_challenge",
+    "store_bind_token_in_dna"
   ],
   "notes": [
-    "Arkaon may propose onboarding steps only until HQ wires affiliate connectors.",
-    "Member/customer navigation DNA stays separate from change/onboarding DNA."
+    "Arkaon may propose onboarding/connect steps only until HQ wires live order relay.",
+    "Member/customer navigation DNA stays separate from change/onboarding/template_bind DNA.",
+    "execute paths enforce no-touch; agent auth fail-closed unless ARKAON_DEV_FAIL_OPEN=1."
   ]
 }

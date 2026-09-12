@@ -111,6 +111,17 @@
       "status": "announced",
       "announced_at": "2026-09-12T04:47:26.399Z",
       "work_split": []
+    },
+    {
+      "id": "d38c471b-8675-4f68-8670-5ae3cfcf6a83",
+      "agent": "gpt",
+      "purpose": "hardening",
+      "areas": [],
+      "requests": [],
+      "status": "closed",
+      "work_split": [],
+      "announced_at": "2026-09-12T05:03:13.808Z",
+      "closed_at": "2026-09-12T05:03:13.809Z"
     }
   ],
   "change_dna": [
@@ -262,6 +273,28 @@
         "connect-assist/"
       ],
       "created_at": "2026-09-12T04:54:20.845Z"
+    },
+    {
+      "id": "4c2250e8-d4e8-408e-8e88-e7feafe25ff6",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "Arkaon hardening P0/P1: agent auth fail-closed, challenge_token bind, connectAt distinct, no-touch execute guards, DNA layer split, vendor phone proof, connect-assist status CLI.",
+      "return_point": "feat/arkaon-platform-onboarding-dna hardened",
+      "return_checklist": [
+        "ARKAON_AGENT_HANDOFF_SECRET on hosts",
+        "DOSIRAK/AIBAEBY TEMPLATE_BIND_SECRET",
+        "GAS vendor resolve for dosirak live",
+        "peer review beom"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_PLATFORM_ONBOARDING_DNA.md",
+        "connect-assist/README.md"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_arkaon-guards.js",
+        "netlify/functions/arkaon-participation.js"
+      ],
+      "created_at": "2026-09-12T05:03:24.478Z"
     }
   ],
   "cross_checks": [
@@ -324,6 +357,16 @@
       "summary": "template-connect 실연동 peer review",
       "status": "pending",
       "announced_at": "2026-09-12T04:54:20.845Z"
+    },
+    {
+      "id": "ede52fcd-30ea-4ba4-8e47-0ab6f0699013",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "4c2250e8-d4e8-408e-8e88-e7feafe25ff6",
+      "summary": "Arkaon P0/P1 hardening peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T05:03:24.478Z"
     }
   ],
   "wake": {
@@ -801,7 +844,133 @@
         }
       },
       "created_at": "2026-09-12T04:54:11.868Z"
+    },
+    {
+      "id": "00d84b7a-e5bd-4fc2-b583-59e274ecec69",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T05:03:13.797Z"
+    },
+    {
+      "id": "9c48f280-e984-426f-aeb4-9aba1edff337",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:03:13.801Z"
+    },
+    {
+      "id": "5ff5bdd6-75f4-4f54-aa86-3ff3a3f0bf01",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:03:13.803Z"
     }
   ],
-  "template_binds": []
+  "template_binds": [],
+  "template_bind_dna": [
+    {
+      "id": "8c2bd4d7-e715-424a-a05f-09b8552fe850",
+      "layer": "template_bind_dna",
+      "kind": "template_instance_bind",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "bind_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "redacted": true
+      },
+      "created_at": "2026-09-12T05:03:13.805Z"
+    }
+  ]
 }
