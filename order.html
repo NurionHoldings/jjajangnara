@@ -843,7 +843,7 @@
     { id:"jeyukbap-large", name:"제육덮밥 곱빼기", price:12000, aiOnly:true },
   ];
 
-  // 세트 메인 7개 (세트영역에는 가격 표시 X)
+  // 세트 메인 7개 + 마파(m8, set-builder 업그레이드)
   const mains = [
     { id:"m1", name:"짜장면", extra:0 },
     { id:"m2", name:"짬뽕", extra:0 },
@@ -852,6 +852,7 @@
     { id:"m5", name:"중화비빔밥", extra:1000 },
     { id:"m6", name:"제육덮밥", extra:2000 },
     { id:"m7", name:"잡채밥", extra:3000 },
+    { id:"m8", name:"마파두부밥", extra:1000 },
   ];
 
   const setRules = {
@@ -941,19 +942,17 @@
   }
 
   async function backupPendingOrder(orderId, orderData){
-    try{
-      const response = await fetch("/.netlify/functions/pending-order", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ orderId, order: orderData }),
-      });
-      if(!response.ok){
-        const result = await response.json().catch(()=>({}));
-        throw new Error(result.message || "대기 주문 서버 저장 실패");
-      }
-    }catch(error){
-      console.warn("pending order backup failed:", error);
-      // localStorage 백업은 유지. 서버 실패만으로는 결제를 막지 않음.
+    const response = await fetch("/.netlify/functions/pending-order", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ orderId, order: orderData }),
+    });
+    const result = await response.json().catch(()=>({}));
+    if(!response.ok){
+      // fail-closed: 서버 RC1 ON(RC1_LEGACY_BLOCKED) 포함 — 대기주문 저장 실패 시 결제창 금지
+      const error = new Error(result.message || "대기 주문 서버 저장 실패");
+      error.code = result.code || "PENDING_BACKUP_FAILED";
+      throw error;
     }
   }
 
@@ -1339,10 +1338,38 @@
       return `${title}${upgrade}${optText}`;
     }).join(", ");
 
-    const mappedMains = payload.mains.map((main)=>({
-      mainId: main.mainId,
-      optionIds: main.opts?.gop ? ["double"] : [],
-    })).filter((main)=>main.mainId);
+    const mappedMains = payload.mains.map((main)=>{
+      const catalogMainId =
+        main.catalogMainId ||
+        ({
+          jjajang: "m1",
+          jjambbong: "m2",
+          bokkeumbap: "m4",
+          bibim: "m5",
+          jeyuk: "m6",
+          japchae: "m7",
+          mapa: "m8",
+        }[main.upgradeId] ||
+          ({
+            jjajang: "m1",
+            jjambbong: "m2",
+            m1: "m1",
+            m2: "m2",
+            m3: "m3",
+            m4: "m4",
+            m5: "m5",
+            m6: "m6",
+            m7: "m7",
+            m8: "m8",
+          }[main.mainId] || main.mainId));
+      const optionIds = [];
+      if(main.opts?.gop) optionIds.push("double");
+      if(main.opts?.sauce) optionIds.push("sauce");
+      return {
+        mainId: catalogMainId,
+        optionIds,
+      };
+    }).filter((main)=>main.mainId);
 
     if(mappedMains.length !== rule.pick){
       console.log("세트 메인 수량이 규칙과 맞지 않습니다.");
@@ -1352,8 +1379,18 @@
     const menuExtra = mappedMains.reduce((sum, main)=>{
       return sum + (mains.find((entry)=>entry.id === main.mainId)?.extra || 0);
     }, 0);
-    const doubles = mappedMains.filter((main)=>main.optionIds.includes("double")).length;
-    const serverAlignedTotal = rule.price + menuExtra + doubles * EXTRA_DOUBLE;
+    const optionExtra = mappedMains.reduce((sum, main)=>{
+      return sum + (main.optionIds.includes("double") ? EXTRA_DOUBLE : 0)
+        + (main.optionIds.includes("sauce") ? EXTRA_DOUBLE : 0);
+    }, 0);
+    // m8(마파) 등은 order.html mains 배열에 없을 수 있으므로 서버 카탈로그 extra와 맞추기 위해
+    // 알려진 추가금 맵을 보조로 사용한다.
+    const extraById = { m1:0, m2:0, m3:1000, m4:1000, m5:1000, m6:2000, m7:3000, m8:1000 };
+    const alignedMenuExtra = mappedMains.reduce((sum, main)=>{
+      const fromUi = mains.find((entry)=>entry.id === main.mainId)?.extra;
+      return sum + (Number.isFinite(fromUi) ? fromUi : (extraById[main.mainId] || 0));
+    }, 0);
+    const serverAlignedTotal = rule.price + alignedMenuExtra + optionExtra;
 
     cart.push({
       type:"set",
@@ -1513,6 +1550,7 @@
       );
     }else{
       // 클라 OFF: 기존 경로만 사용. create-order / checkoutToken 경로와 혼합하지 않는다.
+      // 서버 RC1 ON이면 pending-order가 RC1_LEGACY_BLOCKED → 아래에서 결제창 미개방.
       orderId = createOrderId();
       amount = Number(orderData.total);
       orderName = buildOrderName(orderData.cart);

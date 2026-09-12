@@ -12,6 +12,7 @@ const STORE_NAME = "jjajangnara-pos-orders";
 const RC1_PENDING_PREFIX = "rc1-pending/";
 const RC1_IDEMPOTENCY_PREFIX = "rc1-idempotency/";
 const IDEMPOTENCY_KEY_RE = /^[a-zA-Z0-9._:-]{8,128}$/;
+const CLAIM_TTL_MS = 15 * 1000;
 const CLAIM_WAIT_MS = 50;
 const CLAIM_WAIT_ATTEMPTS = 40;
 
@@ -223,7 +224,9 @@ function createMemoryStore(seed) {
       map.set(key, JSON.parse(JSON.stringify(value)));
       return { modified: true };
     },
-    /** 테스트용: pending 키 개수 */
+    async delete(key) {
+      map.delete(key);
+    },
     _keys() {
       return [...map.keys()];
     },
@@ -235,12 +238,30 @@ async function setJsonIfNew(store, key, value) {
     throw HttpError(500, "스토어가 setJSON을 지원하지 않습니다.", "STORE_UNSUPPORTED");
   }
   const result = await store.setJSON(key, value, { onlyIfNew: true });
-  if (result && typeof result.modified === "boolean") {
-    return result.modified;
+  // H3: modified 불리언이 없으면 성공으로 추정하지 않는다 (fail-closed).
+  if (!result || typeof result.modified !== "boolean") {
+    throw HttpError(
+      500,
+      "스토어가 onlyIfNew(modified)를 지원하지 않습니다.",
+      "STORE_UNSUPPORTED"
+    );
   }
-  // 구형 스토어가 onlyIfNew를 무시하고 덮어쓴 경우 — 재조회로 검증
-  const current = await store.get(key, { type: "json" });
-  return stableStringify(current) === stableStringify(value);
+  return result.modified;
+}
+
+async function deleteStoreKey(store, key) {
+  if (typeof store.delete === "function") {
+    await store.delete(key);
+    return;
+  }
+  throw HttpError(500, "스토어가 delete를 지원하지 않습니다.", "STORE_UNSUPPORTED");
+}
+
+function isClaimStale(ref) {
+  if (!ref || ref.state !== "claimed") return false;
+  const created = Date.parse(ref.createdAt || "");
+  if (!Number.isFinite(created)) return true;
+  return Date.now() - created > CLAIM_TTL_MS;
 }
 
 function sleep(ms) {
@@ -356,10 +377,14 @@ function priceSetItem(raw) {
     }
     const optionIds = uniqueOptionIds(main.optionIds);
     const options = optionIds.map((optionId) => {
-      if (optionId !== "double" && optionId !== "large") {
+      const normalizedId = optionId === "large" ? "double" : optionId;
+      if (normalizedId !== "double" && normalizedId !== "sauce") {
         throw HttpError(400, `세트 메인에 허용되지 않는 옵션입니다: ${optionId}`, "UNKNOWN_OPTION");
       }
-      const option = catalog.getOption(optionId === "large" ? "double" : optionId);
+      const option = catalog.getOption(normalizedId);
+      if (!option) {
+        throw HttpError(400, `존재하지 않는 옵션입니다: ${optionId}`, "UNKNOWN_OPTION");
+      }
       return {
         optionId: option.id,
         nameSnapshot: option.name,
@@ -466,9 +491,36 @@ async function waitForClaimedOrder(store, orderId, secret) {
       const token = mintCheckoutToken(record.orderId, record.version, secret);
       return publicOrderView(record, token, { replay: true });
     }
+    if (record && record.status === "PAID") {
+      throw HttpError(409, "이미 결제된 주문입니다.", "ALREADY_PAID");
+    }
     await sleep(CLAIM_WAIT_MS);
   }
   throw HttpError(503, "동일 주문 생성 처리 중입니다. 잠시 후 다시 시도해 주세요.", "ORDER_CLAIM_PENDING");
+}
+
+function rc1RecordToOrderPayload(record) {
+  return {
+    cart: (record.items || []).map((item) => ({
+      type: item.kind === "set" ? "set" : "single",
+      id: item.menuId || item.setId || "",
+      name: item.menuNameSnapshot || "메뉴",
+      detail:
+        item.kind === "set"
+          ? `${item.tangNameSnapshot || ""} / ${(item.mains || [])
+              .map((main) => main.nameSnapshot)
+              .join(", ")}`
+          : `수량 ${item.quantity}개`,
+      price: Number(item.lineTotal) || 0,
+    })),
+    total: Number(record.amount),
+    utensils: record.utensils,
+    address: record.address,
+    phone: record.phone,
+    request: record.request,
+    date: record.createdAt,
+    orderName: record.orderName,
+  };
 }
 
 async function createPaymentPendingOrder(event, body, options) {
@@ -507,18 +559,20 @@ async function createPaymentPendingOrder(event, body, options) {
   }
 
   const idemKey = rc1IdempotencyKey(clientRequestId);
-  const orderId = createOrderId();
-  const now = new Date();
-  const claim = {
-    state: "claimed",
-    digest,
-    orderId,
-    createdAt: now.toISOString(),
-  };
+  let orderId = createOrderId();
+  let claimed = false;
 
-  const claimed = await setJsonIfNew(store, idemKey, claim);
+  for (let attempt = 0; attempt < 3 && !claimed; attempt += 1) {
+    orderId = createOrderId();
+    const claim = {
+      state: "claimed",
+      digest,
+      orderId,
+      createdAt: new Date().toISOString(),
+    };
+    claimed = await setJsonIfNew(store, idemKey, claim);
+    if (claimed) break;
 
-  if (!claimed) {
     const existingRef = await store.get(idemKey, { type: "json" });
     if (!existingRef || !existingRef.orderId) {
       throw HttpError(409, "멱등 원장이 손상되었습니다.", "IDEMPOTENCY_CORRUPT");
@@ -533,12 +587,37 @@ async function createPaymentPendingOrder(event, body, options) {
     if (existingRef.state === "ready") {
       return resumeExistingOrder(store, existingRef.orderId, secret);
     }
-    // 다른 요청이 클레임 보유 — 동일 digest면 그 orderId로 수렴
-    return waitForClaimedOrder(store, existingRef.orderId, secret);
+    if (existingRef.state === "claimed" && isClaimStale(existingRef)) {
+      // H1: stale claim 회수 후 재클레임
+      try {
+        await deleteStoreKey(store, idemKey);
+      } catch (_) {
+        /* continue wait path if delete unsupported in rare hosts */
+      }
+      continue;
+    }
+    try {
+      return await waitForClaimedOrder(store, existingRef.orderId, secret);
+    } catch (waitError) {
+      if (waitError.code === "ORDER_CLAIM_PENDING" && isClaimStale(existingRef)) {
+        try {
+          await deleteStoreKey(store, idemKey);
+          continue;
+        } catch (_) {
+          throw waitError;
+        }
+      }
+      throw waitError;
+    }
+  }
+
+  if (!claimed) {
+    throw HttpError(503, "주문 클레임을 확보하지 못했습니다. 다시 시도해 주세요.", "ORDER_CLAIM_FAILED");
   }
 
   const version = 1;
   const checkoutToken = mintCheckoutToken(orderId, version, secret);
+  const now = new Date();
   const expiresAt = new Date(now.getTime() + catalog.ORDER_TTL_MS).toISOString();
 
   const record = {
@@ -566,21 +645,115 @@ async function createPaymentPendingOrder(event, body, options) {
     throw HttpError(500, "토큰 원문 저장이 감지되어 주문을 중단합니다.", "TOKEN_PLAINTEXT_FORBIDDEN");
   }
 
-  const pendingCreated = await setJsonIfNew(store, rc1PendingKey(orderId), record);
-  if (!pendingCreated) {
-    // orderId 충돌 — 기존 원장을 덮어쓰지 않고 실패. 클레임은 이미 점유됨.
-    throw HttpError(500, "주문번호 충돌로 생성을 중단했습니다.", "ORDER_ID_COLLISION");
+  let pendingCreated = false;
+  try {
+    pendingCreated = await setJsonIfNew(store, rc1PendingKey(orderId), record);
+    if (!pendingCreated) {
+      await deleteStoreKey(store, idemKey);
+      throw HttpError(500, "주문번호 충돌로 생성을 중단했습니다.", "ORDER_ID_COLLISION");
+    }
+    await store.setJSON(idemKey, {
+      state: "ready",
+      digest,
+      orderId,
+      createdAt: record.createdAt,
+    });
+  } catch (error) {
+    // H1: 생성 실패 시 클레임 롤백 (충돌 시 이미 삭제했을 수 있음)
+    if (error.code !== "ORDER_ID_COLLISION") {
+      try {
+        await deleteStoreKey(store, idemKey);
+      } catch (_) {
+        /* ignore */
+      }
+      if (pendingCreated) {
+        try {
+          await deleteStoreKey(store, rc1PendingKey(orderId));
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+    throw error;
   }
 
-  // 멱등 원장을 ready로 확정 (동일 키 덮어쓰기 — 클레임 소유자만 도달)
-  await store.setJSON(idemKey, {
-    state: "ready",
-    digest,
-    orderId,
-    createdAt: record.createdAt,
-  });
-
   return publicOrderView(record, checkoutToken, { created: true });
+}
+
+/**
+ * RC1 서버 원장 기준 토스 승인 (클라이언트 order/amount 비신뢰)
+ */
+async function prepareRc1Confirm(event, body, options) {
+  options = options || {};
+  const orderId = String(body.orderId || "").trim();
+  const checkoutToken = String(body.checkoutToken || "").trim();
+  const clientAmount = Number(body.amount);
+
+  if (!orderId || !checkoutToken || !Number.isFinite(clientAmount)) {
+    throw HttpError(400, "orderId, amount, checkoutToken이 필요합니다.", "RC1_CONFIRM_REQUIRED");
+  }
+
+  const secret = resolveCheckoutSecret(options);
+  const store = options.store || getOrderStore(event);
+
+  const record = await getRc1PendingOrder(event, orderId, { store });
+  if (!record) {
+    throw HttpError(404, "RC1 주문을 찾을 수 없습니다.", "ORDER_NOT_FOUND");
+  }
+
+  if (record.status === "PAID") {
+    return {
+      alreadyPaid: true,
+      record,
+      orderPayload: rc1RecordToOrderPayload(record),
+      confirmAmount: Number(record.amount),
+    };
+  }
+
+  assertOrderPayable(record);
+  if (!verifyCheckoutToken(record, checkoutToken)) {
+    throw HttpError(403, "checkoutToken이 유효하지 않습니다.", "INVALID_CHECKOUT_TOKEN");
+  }
+  if (Number(record.amount) !== clientAmount) {
+    throw HttpError(409, "결제 금액이 서버 원장과 일치하지 않습니다.", "AMOUNT_MISMATCH");
+  }
+
+  return {
+    alreadyPaid: false,
+    record,
+    orderPayload: rc1RecordToOrderPayload(record),
+    confirmAmount: Number(record.amount),
+  };
+}
+
+async function markRc1OrderPaid(event, orderId, paymentData, options) {
+  options = options || {};
+  const store = options.store || getOrderStore(event);
+  const record = await getRc1PendingOrder(event, orderId, { store });
+  if (!record) {
+    throw HttpError(404, "RC1 주문을 찾을 수 없습니다.", "ORDER_NOT_FOUND");
+  }
+  if (record.status === "PAID") {
+    return record;
+  }
+  const next = {
+    ...record,
+    status: "PAID",
+    updatedAt: new Date().toISOString(),
+    paidAt: paymentData.approvedAt || new Date().toISOString(),
+    payment: {
+      paymentKey: paymentData.paymentKey,
+      method: paymentData.method,
+      status: paymentData.status,
+      approvedAt: paymentData.approvedAt || new Date().toISOString(),
+      totalAmount: paymentData.totalAmount,
+    },
+  };
+  if (Object.prototype.hasOwnProperty.call(next, "checkoutToken")) {
+    delete next.checkoutToken;
+  }
+  await store.setJSON(`${RC1_PENDING_PREFIX}${orderId}`, next);
+  return next;
 }
 
 async function getRc1PendingOrder(event, orderId, options) {
@@ -630,12 +803,16 @@ module.exports = {
   createPaymentPendingOrder,
   getRc1PendingOrder,
   hashToken,
+  isClaimStale,
   isRc1Enabled,
+  markRc1OrderPaid,
   mintCheckoutToken,
+  prepareRc1Confirm,
   priceItems,
   publicOrderView,
   rc1IdempotencyKey,
   rc1PendingKey,
+  rc1RecordToOrderPayload,
   setJsonIfNew,
   verifyCheckoutToken,
 };

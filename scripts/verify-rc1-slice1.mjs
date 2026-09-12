@@ -365,7 +365,7 @@ async function run() {
   });
   pass("플래그 ON/OFF: 서버 거부(503)로 결제 차단");
 
-  // OFF/ON: 서버 ON → 레거시 pending·confirm 차단
+  // OFF/ON: 서버 ON → 레거시 pending 차단 + checkoutToken 없는 confirm 거절
   await withEnv("RC1_SERVER_ORDER", "1", async () => {
     assert.equal(rc1.isRc1Enabled(), true);
     const pendingRes = await pendingOrder.handler({
@@ -379,26 +379,27 @@ async function run() {
     assert.equal(JSON.parse(pendingRes.body).code, "RC1_LEGACY_BLOCKED");
 
     await withEnv("TOSS_SECRET_KEY", "test_sk_dummy", async () => {
-      const confirmRes = await tossConfirm.handler({
-        httpMethod: "POST",
-        body: JSON.stringify({
-          paymentKey: "pk",
-          orderId: "jjn_" + "c".repeat(32),
-          amount: 18000,
-          order: { cart: [] },
-        }),
+      await withEnv("RC1_CHECKOUT_SECRET", SECRET, async () => {
+        const confirmRes = await tossConfirm.handler({
+          httpMethod: "POST",
+          body: JSON.stringify({
+            paymentKey: "pk",
+            orderId: "jjn_" + "c".repeat(32),
+            amount: 18000,
+            order: { cart: [{ name: "x", price: 1 }], total: 18000, phone: "010", address: "addr" },
+          }),
+        });
+        assert.equal(confirmRes.statusCode, 400);
+        assert.equal(JSON.parse(confirmRes.body).code, "RC1_CONFIRM_REQUIRED");
       });
-      assert.equal(confirmRes.statusCode, 503);
-      assert.equal(JSON.parse(confirmRes.body).code, "RC1_LEGACY_BLOCKED");
     });
   });
-  pass("플래그 OFF/ON: 레거시 pending·confirm 서버 차단");
+  pass("플래그 OFF/ON: 레거시 pending 차단·토큰 없는 confirm 거절");
 
-  // ON/ON: RC1 create만 허용 (force+secret으로 원장 경로 실호출)
+  // ON/ON: RC1 create + prepareRc1Confirm (서버 금액)
   await withEnv("RC1_SERVER_ORDER", "1", async () => {
     await withEnv("RC1_CHECKOUT_SECRET", SECRET, async () => {
       const onStore = rc1.createMemoryStore();
-      // handler는 실제 Blobs를 쓰므로 모듈 함수로 RC1 경로 검증
       const row = await rc1.createPaymentPendingOrder(
         null,
         validBody({ clientRequestId: "web_flag_on_on_01" }),
@@ -406,6 +407,13 @@ async function run() {
       );
       assert.equal(row.status, "PAYMENT_PENDING");
       assert.ok(row.checkoutToken);
+      const prepared = await rc1.prepareRc1Confirm(
+        null,
+        { orderId: row.orderId, amount: row.amount, checkoutToken: row.checkoutToken },
+        { store: onStore, checkoutSecret: SECRET }
+      );
+      assert.equal(prepared.confirmAmount, 18000);
+      assert.equal(prepared.alreadyPaid, false);
       const pendingRes = await pendingOrder.handler({
         httpMethod: "POST",
         body: JSON.stringify({ orderId: "legacy-3", order: { cart: [{ name: "x" }] } }),
@@ -413,14 +421,94 @@ async function run() {
       assert.equal(JSON.parse(pendingRes.body).code, "RC1_LEGACY_BLOCKED");
     });
   });
-  pass("플래그 ON/ON: RC1 주문만 허용·레거시 차단");
+  pass("플래그 ON/ON: RC1 주문·confirm 준비 허용·레거시 차단");
 
   const orderHtml = fs.readFileSync(path.join(root, "order.html"), "utf8");
   assert.match(orderHtml, /getOrCreateClientRequestId/);
   assert.match(orderHtml, /레거시 경로로 절대 폴백하지 않는다/);
   assert.match(orderHtml, /create-order \/ checkoutToken 경로와 혼합하지 않는다/);
+  assert.match(orderHtml, /서버 RC1 ON이면 pending-order가 RC1_LEGACY_BLOCKED/);
   assert.equal(/createServerPendingOrder[\s\S]{0,400}catch[\s\S]{0,200}savePendingOrder/.test(orderHtml), false);
-  pass("브라우저 재시도 clientRequestId 재사용·레거시 폴백 없음 (코드 계약)");
+  // B2: backup 실패를 삼키지 않음
+  assert.equal(orderHtml.includes("서버 실패만으로는 결제를 막지 않음"), false);
+  assert.match(orderHtml, /PENDING_BACKUP_FAILED|RC1_LEGACY_BLOCKED/);
+  pass("브라우저 재시도 clientRequestId 재사용·레거시 폴백 없음·B2 hard-fail (코드 계약)");
+
+  // H2: sauce + m8 가격
+  const setSauce = rc1.priceItems([
+    {
+      setId: "solo",
+      quantity: 1,
+      mains: [{ mainId: "m8", optionIds: ["double", "sauce"] }],
+    },
+  ]);
+  // 16000 + m8(1000) + double(1000) + sauce(1000) = 19000
+  assert.equal(setSauce[0].lineTotal, 19000);
+  pass("H2 set-builder 정렬: m8·sauce 서버 계산");
+
+  // H3: modified 없는 스토어 거절
+  const lyingStore = {
+    async get() {
+      return null;
+    },
+    async setJSON() {
+      return {};
+    },
+  };
+  await expectFailAsync(() => rc1.setJsonIfNew(lyingStore, "k", { a: 1 }), "STORE_UNSUPPORTED");
+  pass("H3 setJsonIfNew: modified 필수(추정 성공 금지)");
+
+  // H1: stale claim takeover
+  const staleStore = rc1.createMemoryStore();
+  const staleKey = "web_stale_claim_01";
+  const staleIdem = rc1.rc1IdempotencyKey(staleKey);
+  await staleStore.setJSON(staleIdem, {
+    state: "claimed",
+    digest: "deadbeef",
+    orderId: "jjn_" + "d".repeat(32),
+    createdAt: new Date(Date.now() - 60_000).toISOString(),
+  });
+  // digest will differ → CONFLICT. Need same digest for takeover path.
+  const bodyForStale = validBody({ clientRequestId: staleKey });
+  const digest = rc1.buildRequestDigest({
+    items: bodyForStale.items,
+    utensils: bodyForStale.utensils,
+    address: bodyForStale.address,
+    phone: bodyForStale.phone,
+    request: bodyForStale.request,
+  });
+  await staleStore.setJSON(staleIdem, {
+    state: "claimed",
+    digest,
+    orderId: "jjn_" + "e".repeat(32),
+    createdAt: new Date(Date.now() - 60_000).toISOString(),
+  });
+  const recovered = await rc1.createPaymentPendingOrder(
+    null,
+    bodyForStale,
+    createOpts(staleStore, { idempotencyKey: staleKey })
+  );
+  assert.equal(recovered.status, "PAYMENT_PENDING");
+  assert.notEqual(recovered.orderId, "jjn_" + "e".repeat(32));
+  pass("H1 stale claim TTL 회수 후 단일 주문 재생성");
+
+  // B1 prepare amount mismatch
+  const confStore = rc1.createMemoryStore();
+  const confOrder = await rc1.createPaymentPendingOrder(
+    null,
+    validBody({ clientRequestId: "web_confirm_prep_01" }),
+    createOpts(confStore, { idempotencyKey: "web_confirm_prep_01" })
+  );
+  await expectFailAsync(
+    () =>
+      rc1.prepareRc1Confirm(
+        null,
+        { orderId: confOrder.orderId, amount: 1, checkoutToken: confOrder.checkoutToken },
+        { store: confStore, checkoutSecret: SECRET }
+      ),
+    "AMOUNT_MISMATCH"
+  );
+  pass("B1 prepareRc1Confirm: 클라 금액 불일치 거절");
 
   const failed = results.filter((row) => !row.ok);
   assert.equal(failed.length, 0);

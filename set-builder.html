@@ -430,7 +430,25 @@ document.getElementById("btnDone").addEventListener("click", ()=>{
     const upgradestr = upgrade ? upgrade.title : "기본(면)";
     const add = (upgrade?upgrade.add:0) + (m.opts.gop?1000:0) + (m.opts.sauce?1000:0);
     addTotal += add;
-    return { mainId:m.mainId, mainTitle, upgradeId:m.upgradeId, upgradestr, opts:m.opts, add };
+    const catalogMap = {
+      jjajang: "m1",
+      jjambbong: "m2",
+      bokkeumbap: "m4",
+      bibim: "m5",
+      jeyuk: "m6",
+      japchae: "m7",
+      mapa: "m8",
+    };
+    const catalogMainId = (m.upgradeId && catalogMap[m.upgradeId]) || catalogMap[m.mainId] || m.mainId;
+    return {
+      mainId: m.mainId,
+      catalogMainId,
+      mainTitle,
+      upgradeId: m.upgradeId,
+      upgradestr,
+      opts: m.opts,
+      add,
+    };
   });
   const payload = {
     setType,

@@ -1,8 +1,147 @@
 {
-  "visits": [],
-  "change_dna": [],
-  "cross_checks": [],
+  "visits": [
+    {
+      "id": "2ec331c5-439b-411e-912b-595172936db1",
+      "agent": "gpt",
+      "purpose": "RC1 Slice1 remediation 전수분석 — Intent DNA 총동원 미비점/보완 점검",
+      "areas": [
+        "netlify/functions/_rc1-orders.js",
+        "netlify/functions/create-order.js",
+        "netlify/functions/pending-order.js",
+        "netlify/functions/toss-confirm.js",
+        "order.html",
+        "scripts/verify-rc1-slice1.mjs",
+        "payment-config.js"
+      ],
+      "requests": [
+        "blocking3재검증",
+        "동시성/재개/플래그4조합",
+        "no-touch:main-merge/deploy/flag-on/slice2",
+        "AML observe-only"
+      ],
+      "status": "closed",
+      "work_split": [
+        {
+          "who": "gpt",
+          "what": "code audit + DNA record"
+        },
+        {
+          "who": "arkaon",
+          "what": "ops context / peer review queue"
+        }
+      ],
+      "announced_at": "2026-09-12T02:55:07.140Z",
+      "closed_at": "2026-09-12T02:59:27.403Z",
+      "findings_ref": "2b3232b5-6ab5-49ad-a908-5e8ef306c148",
+      "cross_check_id": "14327e39-4752-4d36-9d6c-4f6cce282e45"
+    },
+    {
+      "id": "a043ebec-75ea-4d1e-ad03-a95d242502af",
+      "agent": "gpt",
+      "purpose": "RC1 Intent DNA 미비점 순서 수정: B2→B1→H1→H2→H3",
+      "areas": [
+        "order.html",
+        "payment-success.html",
+        "netlify/functions/toss-confirm.js",
+        "netlify/functions/_rc1-orders.js",
+        "set-builder.html",
+        "scripts/verify-rc1-slice1.mjs"
+      ],
+      "requests": [
+        "no-touch:main-merge/deploy/flag-on",
+        "AML observe-only"
+      ],
+      "status": "closed",
+      "work_split": [],
+      "announced_at": "2026-09-12T03:01:56.644Z",
+      "closed_at": "2026-09-12T03:07:12.343Z",
+      "findings_ref": "ccb8219d-3149-4798-9b90-2c3ab40e03c1"
+    }
+  ],
+  "change_dna": [
+    {
+      "id": "2b3232b5-6ab5-49ad-a908-5e8ef306c148",
+      "source": "gpt",
+      "area": "payment",
+      "summary": "RC1 Slice1 Intent DNA 전수분석: remediation PASS 다수, B1 confirm미연동·B2 OFF/ON 결제창개방·H1 orphan claim·H2 set-builder 드리프트 잔존. 봉인/Slice2/배포 NO-GO 유지.",
+      "return_point": "d25e138 remediation + HEAD 7b0f8d4(arkaon phase-a). 재검증 전까지 RC1 OFF·실결제금지.",
+      "return_checklist": [
+        "B1 payment-success/toss-confirm RC1 원장 승인 경로 (Slice2 범위 가능)",
+        "B2 legacy backupPendingOrder 실패 시 requestPayment hard-fail",
+        "H1 claimed orphan TTL/takeover/rollback",
+        "H2 set-builder m1-m7/sauce catalog 정렬",
+        "H3 setJsonIfNew modified 필수·추정성공 금지",
+        "M2 client/server digest 정규화 공유",
+        "플래그 OFF·실결제 PROHIBITED·main HOLD 유지"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_PARTICIPATION_CONTRACT.md",
+        ".arkaon/participation/host_profile.json",
+        "netlify/functions/_rc1-orders.js",
+        "order.html#requestTossPayment",
+        "payment-success.html#loadPendingOrder"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_rc1-orders.js",
+        "netlify/functions/create-order.js",
+        "netlify/functions/pending-order.js",
+        "netlify/functions/toss-confirm.js",
+        "order.html",
+        "payment-success.html",
+        "scripts/verify-rc1-slice1.mjs"
+      ],
+      "created_at": "2026-09-12T02:59:27.403Z"
+    },
+    {
+      "id": "ccb8219d-3149-4798-9b90-2c3ab40e03c1",
+      "source": "gpt",
+      "area": "payment",
+      "summary": "RC1 Intent DNA 보완 구현: B2 hard-fail, B1 RC1 confirm, H1 claim TTL, H2 m8/sauce, H3 modified 필수. 게이트 31 PASS. 플래그 OFF·배포 NO-GO 유지.",
+      "return_point": "chore/arkaon-phase-a post-audit remediation pending commit",
+      "return_checklist": [
+        "peer review beom",
+        "flag OFF confirm",
+        "no deploy"
+      ],
+      "contract_pointers": [
+        "order.html backupPendingOrder",
+        "toss-confirm prepareRc1Confirm",
+        "_rc1-orders claim TTL"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_rc1-orders.js",
+        "netlify/functions/toss-confirm.js",
+        "order.html",
+        "payment-success.html",
+        "set-builder.html"
+      ],
+      "created_at": "2026-09-12T03:07:12.343Z"
+    }
+  ],
+  "cross_checks": [
+    {
+      "id": "14327e39-4752-4d36-9d6c-4f6cce282e45",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "2b3232b5-6ab5-49ad-a908-5e8ef306c148",
+      "summary": "RC1 Slice1 전수분석 peer review 요청: B1/B2 차단 여부·H1 claim TTL·봉인 판정 재확인",
+      "status": "pending",
+      "announced_at": "2026-09-12T02:59:27.403Z"
+    },
+    {
+      "id": "a430b226-549d-48c8-a934-6986d16df9e8",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "ccb8219d-3149-4798-9b90-2c3ab40e03c1",
+      "summary": "B2/B1/H1/H2/H3 구현 재검증 peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T03:07:12.343Z"
+    }
+  ],
   "wake": {
-    "status": "asleep"
+    "status": "asleep",
+    "last_traffic_at": "2026-09-12T03:07:12.343Z"
   }
 }
