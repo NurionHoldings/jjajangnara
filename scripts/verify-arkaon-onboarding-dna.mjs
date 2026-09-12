@@ -173,6 +173,36 @@ async function run() {
   assert.equal(JSON.parse(execAibaeby.body).data.code, "CONNECTOR_ENV_MISSING");
   pass("API onboarding-execute aibaeby fail-closed without env");
 
+  const connectPlan = planner.planOnboarding("도시락 실연동");
+  assert.equal(connectPlan.ok, true);
+  assert.equal(connectPlan.intent, "TEMPLATE_CONNECT");
+  assert.equal(connectPlan.mode, "template_connect_assist");
+  assert.ok(connectPlan.nextActions.some((a) => a.type === "post_template_bind"));
+  pass("command: 실연동 → TEMPLATE_CONNECT");
+
+  const connectAssist = require("../netlify/functions/_template-connect-assist.js");
+  assert.ok(connectAssist.menuCatalogDigest().startsWith("sha256:"));
+  pass("template-connect: menu digest");
+
+  const connectExec = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "template-connect-execute" },
+    headers: {},
+    body: JSON.stringify({
+      platformId: "dosirak.store",
+      dryRun: true,
+      vendor: { vendor_id: "v_existing", phone_last4: "5678" },
+      consents: {
+        privacyAt: "2026-09-12T00:00:00.000Z",
+        termsAt: "2026-09-12T00:00:00.000Z",
+        connectAt: "2026-09-12T00:00:00.000Z",
+      },
+    }),
+  });
+  assert.equal(connectExec.statusCode, 422);
+  assert.equal(JSON.parse(connectExec.body).data.code, "CONNECTOR_ENV_MISSING");
+  pass("API template-connect-execute fail-closed without env");
+
   console.log("\nArkaon onboarding DNA verify: PASS");
 }
 

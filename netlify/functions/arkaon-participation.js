@@ -20,6 +20,11 @@ const {
   describeConnectorReadiness: describeAibaebyReadiness,
   postMerchantDraft,
 } = require("./_aibaeby-merchant-draft-connector");
+const {
+  buildConnectAssistProfile,
+  describeConnectReadiness,
+  postTemplateBind,
+} = require("./_template-connect-assist");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -46,6 +51,7 @@ function loadStore() {
       change_dna: [],
       cross_checks: [],
       onboarding_dna: [],
+      template_binds: [],
       wake: { status: "asleep", last_traffic_at: null },
     };
   }
@@ -187,9 +193,76 @@ exports.handler = async (event) => {
       data: {
         dosirak: describeDosirakReadiness(),
         aibaeby: describeAibaebyReadiness(),
-        note: "정산·지급 실행 없음. draft만.",
+        templateConnect: describeConnectReadiness(),
+        note: "draft=신규 입점, template-connect=기존 업체 실연동. 정산·지급 실행 없음.",
       },
     });
+  }
+
+  /**
+   * Existing template instance ↔ existing vendor bind (dosirak | aibaeby).
+   * Body: { platformId, action?, vendor:{vendor_id,phone_last4}, consents:{privacyAt,termsAt,connectAt}, dryRun? }
+   */
+  if (event.httpMethod === "POST" && action === "template-connect-execute") {
+    const platformId = String(body.platformId || body.platform || "").trim();
+    if (platformId !== "dosirak.store" && platformId !== "aibaeby.com") {
+      return json(422, {
+        success: false,
+        code: "PLATFORM_NOT_WIRED",
+        message: "template-connect는 dosirak.store / aibaeby.com 만 지원",
+      });
+    }
+
+    const result = await postTemplateBind({
+      platformId,
+      action: body.action || "bind",
+      dryRun: body.dryRun === true,
+      consents: body.consents || {},
+      vendor: body.vendor || {},
+      vendorId: body.vendorId,
+      phoneLast4: body.phoneLast4,
+      merchant: body.merchant || {},
+      bindToken: body.bindToken || body.bind_token,
+      bindId: body.bindId || body.bind_id,
+    });
+
+    const assist = buildConnectAssistProfile(result);
+    if (!Array.isArray(store.template_binds)) store.template_binds = [];
+    const row = {
+      id: id(),
+      layer: "onboarding_dna",
+      kind: "template_instance_bind",
+      platformId,
+      ok: Boolean(result.ok),
+      code: result.code || null,
+      bind_id: result.bind_id || null,
+      dry_run: Boolean(result.dry_run || body.dryRun),
+      planSummary: stripSecrets({
+        bind_status: result.bind_status || null,
+        resume_url: result.resume_url || null,
+        assist,
+      }),
+      created_at: new Date().toISOString(),
+    };
+    store.onboarding_dna.push(row);
+    if (result.ok && result.bind_id) {
+      store.template_binds.push({
+        id: row.id,
+        platformId,
+        bind_id: result.bind_id,
+        bind_status: result.bind_status,
+        // bind_token 원문 저장 금지 — fingerprint만
+        bind_token_fp: result.bind_token
+          ? require("crypto").createHash("sha256").update(String(result.bind_token)).digest("hex").slice(0, 16)
+          : null,
+        created_at: row.created_at,
+      });
+    }
+    saveStore(store);
+
+    const softFail = ["CONSENT_REQUIRED", "VENDOR_REQUIRED", "PHONE_PROOF_REQUIRED"].includes(result.code);
+    const status = result.ok ? 200 : softFail ? 400 : 422;
+    return json(status, { success: result.ok, data: { ...result, assist }, dnaId: row.id });
   }
 
   /**

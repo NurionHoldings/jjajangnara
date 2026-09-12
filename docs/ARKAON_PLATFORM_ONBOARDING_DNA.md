@@ -36,7 +36,34 @@ Base: `/.netlify/functions/arkaon-participation?action=...`
 
 Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 
-### `onboarding-execute` (dosirak | aibaeby)
+## draft vs template-connect
+
+| 장치 | 언제 | API |
+|------|------|-----|
+| draft 입점 | 신규 신청 | `onboarding-execute` → vendor/merchant-draft |
+| **template-connect** | 이미 개설된 템플릿 + 기존 입점업체 | `template-connect-execute` → `/api/template-bind` |
+
+커넥팅 보조: `connect-assist/` (정산 채널 비활성, bind 상태·메뉴 스냅샷·포스 힌트).
+
+### `template-connect-execute`
+
+```json
+{
+  "platformId": "aibaeby.com",
+  "dryRun": true,
+  "vendor": { "vendor_id": "existing-uuid", "phone_last4": "5678" },
+  "consents": {
+    "privacyAt": "2026-09-12T00:00:00.000Z",
+    "termsAt": "2026-09-12T00:00:00.000Z",
+    "connectAt": "2026-09-12T00:00:00.000Z"
+  }
+}
+```
+
+추가 env:
+
+- `DOSIRAK_TEMPLATE_BIND_URL` / `AIBAEBY_TEMPLATE_BIND_URL`
+
 
 ```json
 {

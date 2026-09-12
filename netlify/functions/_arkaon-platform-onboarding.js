@@ -140,10 +140,61 @@ function planOnboarding(commandText) {
   const steps = (manifest.playbooks && manifest.playbooks[intent]) || [];
   const profile = buildTemplateMerchantProfile();
 
+  const nextActions = [
+    {
+      type: "open_entry",
+      url: intent === "APP_INSTALL" ? platform.publicBase : platform.publicBase + (platform.onboardingEntry || ""),
+    },
+    {
+      type: "await_merchant_consent",
+      required: true,
+    },
+  ];
+
+  if (intent === "TEMPLATE_CONNECT") {
+    nextActions.push({
+      type: "post_template_bind",
+      action: "template-connect-execute",
+      platformId: platform.id,
+      requiredConsents: ["privacyAt", "termsAt", "connectAt"],
+      requiredProof: ["vendor_id", "phone_last4"],
+      note: "기존 입점업체 증명 후 템플릿 인스턴스 바인드 (draft 아님)",
+      assist: "connect-assist/",
+    });
+  }
+
+  if (platform.id === "dosirak.store" && intent === "PLATFORM_ONBOARD") {
+    nextActions.push({
+      type: "post_affiliate_draft",
+      action: "onboarding-execute",
+      platformId: "dosirak.store",
+      requiredConsents: ["privacyAt", "termsAt"],
+      requiredMerchant: ["phone"],
+      note: "동의·전화 확보 후 vendor-draft POST (계좌 자동기입 금지)",
+    });
+  }
+
+  if (platform.id === "aibaeby.com" && intent === "PLATFORM_ONBOARD") {
+    nextActions.push({
+      type: "post_affiliate_draft",
+      action: "onboarding-execute",
+      platformId: "aibaeby.com",
+      requiredConsents: ["privacyAt", "termsAt"],
+      requiredMerchant: ["phone"],
+      note: "동의·전화 확보 후 merchant-draft POST (계좌 자동기입 금지)",
+    });
+  }
+
+  nextActions.push({
+    type: "hq_wire_connector",
+    required: platform.status === "declared" || platform.status === "ready_for_connector_design",
+    note: "커넥터 라이브/정산은 HQ 승인 후",
+  });
+
   return {
     ok: true,
     phase: manifest.phase || "A",
-    mode: "propose_only",
+    mode: intent === "TEMPLATE_CONNECT" ? "template_connect_assist" : "propose_only",
     intent,
     platform: {
       id: platform.id,
@@ -152,6 +203,8 @@ function planOnboarding(commandText) {
       onboardingEntry: platform.publicBase + (platform.onboardingEntry || ""),
       signupEntry: platform.publicBase + (platform.signupEntry || ""),
       connectorMode: platform.connectorMode,
+      bindEndpoint: platform.bindEndpoint || null,
+      draftEndpoint: platform.draftEndpoint || null,
     },
     merchantProfile: profile,
     fieldMapping: manifest.fieldMapping,
@@ -160,51 +213,16 @@ function planOnboarding(commandText) {
       step,
       autoExecutable:
         step !== "await_hq_go_live_if_settlement" &&
+        step !== "await_hq_live_order_relay" &&
         step !== "request_merchant_consents" &&
+        step !== "request_bind_consents" &&
+        step !== "prove_existing_vendor" &&
         !String(step).includes("settlement"),
     })),
-    nextActions: [
-      {
-        type: "open_entry",
-        url: intent === "APP_INSTALL" ? platform.publicBase : platform.publicBase + (platform.onboardingEntry || ""),
-      },
-      {
-        type: "await_merchant_consent",
-        required: true,
-      },
-      ...(platform.id === "dosirak.store" && intent === "PLATFORM_ONBOARD"
-        ? [
-            {
-              type: "post_affiliate_draft",
-              action: "onboarding-execute",
-              platformId: "dosirak.store",
-              requiredConsents: ["privacyAt", "termsAt"],
-              requiredMerchant: ["phone"],
-              note: "동의·전화 확보 후 vendor-draft POST (계좌 자동기입 금지)",
-            },
-          ]
-        : []),
-      ...(platform.id === "aibaeby.com" && intent === "PLATFORM_ONBOARD"
-        ? [
-            {
-              type: "post_affiliate_draft",
-              action: "onboarding-execute",
-              platformId: "aibaeby.com",
-              requiredConsents: ["privacyAt", "termsAt"],
-              requiredMerchant: ["phone"],
-              note: "동의·전화 확보 후 merchant-draft POST (계좌 자동기입 금지)",
-            },
-          ]
-        : []),
-      {
-        type: "hq_wire_connector",
-        required: platform.status === "declared" || platform.status === "ready_for_connector_design",
-        note: "커넥터 라이브/정산은 HQ 승인 후",
-      },
-    ],
+    nextActions,
     forbidden: manifest.authority?.forbidden || [],
     noTouchActions: noTouch.bannedActions || [],
-    dnaLayer: "onboarding_dna",
+    dnaLayer: intent === "TEMPLATE_CONNECT" ? "onboarding_dna" : "onboarding_dna",
     navigationDnaSeparate: true,
   };
 }

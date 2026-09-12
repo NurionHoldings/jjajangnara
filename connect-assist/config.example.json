@@ -1,0 +1,31 @@
+{
+  "mode": "template_instance_bind_v1",
+  "template": {
+    "product": "JJAJANGNARA",
+    "template_id": "restaurant-delivery-template",
+    "instance_id": "jjajangnara-sejong",
+    "public_base": "https://example.jjajangnara.local"
+  },
+  "platforms": {
+    "dosirak.store": {
+      "bindUrl": "https://도시락.store/api/template-bind",
+      "vendor_id": "REPLACE_EXISTING_VENDOR_ID",
+      "enabled": false
+    },
+    "aibaeby.com": {
+      "bindUrl": "https://aibaeby.com/api/template-bind",
+      "vendor_id": "REPLACE_EXISTING_VENDOR_ID",
+      "enabled": false
+    }
+  },
+  "assist": {
+    "channels": ["menu_sync_snapshot", "order_webhook_ready", "pos_bridge_hint"],
+    "posBridgePath": "../pos-bridge",
+    "pollSeconds": 30
+  },
+  "notes": [
+    "bind_token / connector secret은 이 파일에 넣지 말 것",
+    "환경변수 또는 OS 시크릿 스토어 사용",
+    "정산·지급 채널은 HQ 승인 전 비활성"
+  ]
+}

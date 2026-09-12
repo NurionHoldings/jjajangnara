@@ -8,7 +8,7 @@ const { MENUS, SETS } = require("./_menu-catalog");
 const { buildTemplateMerchantProfile, loadManifest } = require("./_arkaon-platform-onboarding");
 
 const PLATFORM_ID = "aibaeby.com";
-const DEFAULT_DRAFT_PATH = "/api/affiliate/merchant-draft";
+const DEFAULT_DRAFT_PATH = "/api/affiliate/merchant-draft"; // alias: /api/vendor-draft
 const FETCH_TIMEOUT_MS = 12000;
 
 function connectorConfig() {

@@ -240,6 +240,28 @@
         "netlify/functions/arkaon-participation.js"
       ],
       "created_at": "2026-09-12T04:47:26.399Z"
+    },
+    {
+      "id": "ad21fcb8-668b-4108-a06b-8157f20d3cff",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "TEMPLATE_CONNECT: 기존 템플릿↔dosirak/aibaeby template-bind 실연동 장치 + connect-assist. draft 입점과 분리. 정산 미포함.",
+      "return_point": "feat/arkaon-platform-onboarding-dna",
+      "return_checklist": [
+        "DOSIRAK_TEMPLATE_BIND_URL",
+        "AIBAEBY_TEMPLATE_BIND_URL",
+        "peer review beom",
+        "no payout"
+      ],
+      "contract_pointers": [
+        "connect-assist/README.md",
+        "docs/ARKAON_PLATFORM_ONBOARDING_DNA.md"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_template-connect-assist.js",
+        "connect-assist/"
+      ],
+      "created_at": "2026-09-12T04:54:20.845Z"
     }
   ],
   "cross_checks": [
@@ -292,11 +314,21 @@
       "summary": "aibaeby participation+merchant-draft peer review",
       "status": "pending",
       "announced_at": "2026-09-12T04:47:26.399Z"
+    },
+    {
+      "id": "3924e8a6-786e-45b7-b283-cc6cbfd0c8f9",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "ad21fcb8-668b-4108-a06b-8157f20d3cff",
+      "summary": "template-connect 실연동 peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T04:54:20.845Z"
     }
   ],
   "wake": {
     "status": "awake",
-    "last_traffic_at": "2026-09-12T04:47:26.399Z"
+    "last_traffic_at": "2026-09-12T04:54:20.845Z"
   },
   "onboarding_dna": [
     {
@@ -623,6 +655,153 @@
         }
       },
       "created_at": "2026-09-12T04:47:31.038Z"
+    },
+    {
+      "id": "2da0ce57-a376-435a-9fd9-0905e991ee39",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T04:54:11.860Z"
+    },
+    {
+      "id": "2fc663c4-57c6-4b3e-9f29-63f45b84fbd1",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T04:54:11.864Z"
+    },
+    {
+      "id": "ad2275e9-54a1-495a-8faa-8571b1ac8ecf",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T04:54:11.865Z"
+    },
+    {
+      "id": "e41ba0ec-2858-4458-bd6e-90260bdfd406",
+      "layer": "onboarding_dna",
+      "kind": "template_instance_bind",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "bind_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "bind_status": null,
+        "resume_url": null,
+        "assist": {
+          "mode": "template_instance_bind_v1",
+          "platformId": null,
+          "bind_id": null,
+          "bind_status": null,
+          "channels": [
+            "menu_sync_snapshot",
+            "order_webhook_ready",
+            "pos_bridge_hint"
+          ],
+          "local": {
+            "posBridge": "pos-bridge/",
+            "connectAssist": "connect-assist/",
+            "menuCatalog": "netlify/functions/_menu-catalog.js"
+          },
+          "next": [
+            "store bind_token offline (secret-safe storage)",
+            "run connect-assist against platform status",
+            "HQ enable live order relay when ready"
+          ]
+        }
+      },
+      "created_at": "2026-09-12T04:54:11.868Z"
     }
-  ]
+  ],
+  "template_binds": []
 }

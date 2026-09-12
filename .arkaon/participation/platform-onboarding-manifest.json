@@ -23,6 +23,12 @@
   },
   "commandIntents": [
     {
+      "intent": "TEMPLATE_CONNECT",
+      "aliases": ["실연동", "템플릿 연결", "이미 입점", "연동해줘", "커넥트", "바인드", "기존 업체 연동"],
+      "requiresPlatform": true,
+      "note": "이미 개설된 템플릿+기존 입점업체 바인드 (draft 입점과 분리)"
+    },
+    {
       "intent": "PLATFORM_ONBOARD",
       "aliases": ["입점", "입점해줘", "플랫폼 등록", "가게 등록", "벤더 등록"],
       "requiresPlatform": true
@@ -49,10 +55,22 @@
       "signupEntry": "/signup.html",
       "connectorMode": "first_party_api",
       "draftEndpoint": "/api/vendor-draft",
-      "capabilities": ["vendor_apply", "menu_draft", "consent_capture", "app_install_guide", "affiliate_draft_api"],
+      "bindEndpoint": "/api/template-bind",
+      "capabilities": [
+        "vendor_apply",
+        "menu_draft",
+        "consent_capture",
+        "app_install_guide",
+        "affiliate_draft_api",
+        "template_instance_bind"
+      ],
       "menuSyncSource": "netlify/functions/_menu-catalog.js",
-      "envRequired": ["DOSIRAK_VENDOR_DRAFT_URL", "DOSIRAK_AFFILIATE_CONNECTOR_SECRET"],
-      "notes": "계열 중개. vendor-draft API 배선됨. 동의·전화 필수, 계좌/사진 자동수집 금지. 정산 라이브는 HQ."
+      "envRequired": [
+        "DOSIRAK_VENDOR_DRAFT_URL",
+        "DOSIRAK_TEMPLATE_BIND_URL",
+        "DOSIRAK_AFFILIATE_CONNECTOR_SECRET"
+      ],
+      "notes": "draft=신규 입점 초안, template-bind=기존 업체↔템플릿 실연동. 정산 HQ."
     },
     {
       "id": "aibaeby.com",
@@ -64,20 +82,36 @@
       "signupEntry": "/vendor-join.html",
       "connectorMode": "first_party_api",
       "draftEndpoint": "/api/affiliate/merchant-draft",
+      "bindEndpoint": "/api/template-bind",
       "participationEndpoint": "/api/admin/arkaon/participation",
       "capabilities": [
         "merchant_signup",
         "app_install_guide",
         "template_bind",
+        "template_instance_bind",
         "affiliate_draft_api",
         "arkaon_participation"
       ],
       "menuSyncSource": "netlify/functions/_menu-catalog.js",
-      "envRequired": ["AIBAEBY_MERCHANT_DRAFT_URL", "AIBAEBY_AFFILIATE_CONNECTOR_SECRET"],
-      "notes": "계열. merchant-draft + Arkaon participation 능력치 배선. 동의·전화 필수, 계좌 자동기입 금지. 정산 HQ."
+      "envRequired": [
+        "AIBAEBY_MERCHANT_DRAFT_URL",
+        "AIBAEBY_TEMPLATE_BIND_URL",
+        "AIBAEBY_AFFILIATE_CONNECTOR_SECRET"
+      ],
+      "notes": "draft=신규, template-bind=기존 업체 실연동 + participation 능력치. 정산 HQ."
     }
   ],
   "playbooks": {
+    "TEMPLATE_CONNECT": [
+      "resolve_platform",
+      "load_existing_template_instance",
+      "request_bind_consents",
+      "prove_existing_vendor",
+      "post_template_bind",
+      "issue_connect_assist_profile",
+      "record_connect_dna",
+      "await_hq_live_order_relay"
+    ],
     "PLATFORM_ONBOARD": [
       "resolve_platform",
       "load_template_merchant_profile",
