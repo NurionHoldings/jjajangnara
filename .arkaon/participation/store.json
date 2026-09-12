@@ -93,6 +93,24 @@
       "announced_at": "2026-09-12T03:49:38.017Z",
       "work_split": [],
       "closed_at": "2026-09-12T04:09:10.885Z"
+    },
+    {
+      "id": "6e6c23d5-c7bb-48fd-b339-72459645c943",
+      "agent": "gpt",
+      "purpose": "aibaeby.com participation 능력치 + merchant-draft 실배선",
+      "areas": [
+        "aibaeby services/api",
+        "netlify/functions",
+        ".arkaon/participation"
+      ],
+      "requests": [
+        "no payout",
+        "no secrets in DNA",
+        "affiliate first-party"
+      ],
+      "status": "announced",
+      "announced_at": "2026-09-12T04:47:26.399Z",
+      "work_split": []
     }
   ],
   "change_dna": [
@@ -200,6 +218,28 @@
         ".arkaon/participation/"
       ],
       "created_at": "2026-09-12T04:09:10.885Z"
+    },
+    {
+      "id": "a0dc87b3-d051-4b25-90bb-b1db0dcfe6da",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "aibaeby.com: Arkaon participation API + affiliate merchant-draft 배선. JJAJANGNARA onboarding-execute 확장. 정산 미포함.",
+      "return_point": "feat/arkaon-platform-onboarding-dna + aibaeby feat/arkaon-participation-affiliate-draft",
+      "return_checklist": [
+        "AIBAEBY_* env on both hosts",
+        "deploy aibaeby API",
+        "peer review beom",
+        "RC1 OFF"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_PLATFORM_ONBOARDING_DNA.md",
+        "NurionHoldings/aibaeby participation"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_aibaeby-merchant-draft-connector.js",
+        "netlify/functions/arkaon-participation.js"
+      ],
+      "created_at": "2026-09-12T04:47:26.399Z"
     }
   ],
   "cross_checks": [
@@ -242,11 +282,21 @@
       "summary": "dosirak vendor-draft 실배선 peer review: auth·forbidden fields·consent gate·env fail-closed",
       "status": "pending",
       "announced_at": "2026-09-12T04:09:10.885Z"
+    },
+    {
+      "id": "84b38cf0-5c12-4760-a145-85a51339c802",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "a0dc87b3-d051-4b25-90bb-b1db0dcfe6da",
+      "summary": "aibaeby participation+merchant-draft peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T04:47:26.399Z"
     }
   ],
   "wake": {
     "status": "awake",
-    "last_traffic_at": "2026-09-12T04:09:10.885Z"
+    "last_traffic_at": "2026-09-12T04:47:26.399Z"
   },
   "onboarding_dna": [
     {
@@ -463,6 +513,116 @@
         }
       },
       "created_at": "2026-09-12T04:02:32.181Z"
+    },
+    {
+      "id": "ba803293-3d55-4268-bce8-73ce748d1f95",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T04:47:31.033Z"
+    },
+    {
+      "id": "799c8a00-1d59-4dcd-9d57-14472ac06d38",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T04:47:31.037Z"
+    },
+    {
+      "id": "c5bcc5fb-f183-494c-9b9b-5dc893845fea",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T04:47:31.038Z"
     }
   ]
 }

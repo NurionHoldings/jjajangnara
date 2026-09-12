@@ -90,7 +90,27 @@ async function run() {
   assert.equal(registryBody.success, true);
   const dosirak = registryBody.data.platforms.find((p) => p.id === "dosirak.store");
   assert.equal(dosirak.status, "connector_wired_draft");
+  const aibaebyPlat = registryBody.data.platforms.find((p) => p.id === "aibaeby.com");
+  assert.equal(aibaebyPlat.status, "connector_wired_draft");
   pass("API platform-registry");
+
+  const aibaebyPlan = planner.planOnboarding("aibaeby.com 입점해줘");
+  assert.equal(aibaebyPlan.ok, true);
+  assert.ok(aibaebyPlan.nextActions.some((a) => a.platformId === "aibaeby.com"));
+  pass("command: aibaeby 입점 → post_affiliate_draft");
+
+  const aibaebyConnector = require("../netlify/functions/_aibaeby-merchant-draft-connector.js");
+  const aibaebyPayload = aibaebyConnector.buildMerchantDraftPayload({
+    consents: {
+      privacyAt: "2026-09-12T00:00:00.000Z",
+      termsAt: "2026-09-12T00:00:00.000Z",
+    },
+    merchant: { phone: "01012345678" },
+    dryRun: true,
+  });
+  assert.ok(aibaebyPayload.data.shop_name.includes("짜장나라"));
+  assert.ok(!("account_number" in aibaebyPayload.data));
+  pass("aibaeby connector: draft payload without bank");
 
   const intentRes = await arkaon.handler({
     httpMethod: "POST",
@@ -110,6 +130,9 @@ async function run() {
     headers: {},
   });
   assert.equal(ready.statusCode, 200);
+  const readyBody = JSON.parse(ready.body);
+  assert.ok(readyBody.data.dosirak);
+  assert.ok(readyBody.data.aibaeby);
   pass("API connector-readiness");
 
   const execMissing = await arkaon.handler({
@@ -131,6 +154,24 @@ async function run() {
   assert.equal(execBody.data.code, "CONNECTOR_ENV_MISSING");
   assert.ok(execBody.data.draftPreview);
   pass("API onboarding-execute fail-closed without env");
+
+  const execAibaeby = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "onboarding-execute" },
+    headers: {},
+    body: JSON.stringify({
+      platformId: "aibaeby.com",
+      dryRun: true,
+      consents: {
+        privacyAt: "2026-09-12T00:00:00.000Z",
+        termsAt: "2026-09-12T00:00:00.000Z",
+      },
+      merchant: { phone: "01012345678" },
+    }),
+  });
+  assert.equal(execAibaeby.statusCode, 422);
+  assert.equal(JSON.parse(execAibaeby.body).data.code, "CONNECTOR_ENV_MISSING");
+  pass("API onboarding-execute aibaeby fail-closed without env");
 
   console.log("\nArkaon onboarding DNA verify: PASS");
 }

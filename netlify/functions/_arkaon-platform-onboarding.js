@@ -184,6 +184,18 @@ function planOnboarding(commandText) {
             },
           ]
         : []),
+      ...(platform.id === "aibaeby.com" && intent === "PLATFORM_ONBOARD"
+        ? [
+            {
+              type: "post_affiliate_draft",
+              action: "onboarding-execute",
+              platformId: "aibaeby.com",
+              requiredConsents: ["privacyAt", "termsAt"],
+              requiredMerchant: ["phone"],
+              note: "동의·전화 확보 후 merchant-draft POST (계좌 자동기입 금지)",
+            },
+          ]
+        : []),
       {
         type: "hq_wire_connector",
         required: platform.status === "declared" || platform.status === "ready_for_connector_design",

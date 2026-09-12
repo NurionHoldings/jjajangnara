@@ -36,11 +36,11 @@ Base: `/.netlify/functions/arkaon-participation?action=...`
 
 Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 
-### `onboarding-execute` (dosirak)
+### `onboarding-execute` (dosirak | aibaeby)
 
 ```json
 {
-  "platformId": "dosirak.store",
+  "platformId": "aibaeby.com",
   "dryRun": true,
   "consents": { "privacyAt": "2026-09-12T00:00:00.000Z", "termsAt": "2026-09-12T00:00:00.000Z" },
   "merchant": { "phone": "01012345678" }
@@ -50,7 +50,9 @@ Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 환경변수(Netlify, 값 DNA 금지):
 
 - `DOSIRAK_VENDOR_DRAFT_URL` — 예: `https://도시락.store/api/vendor-draft`
-- `DOSIRAK_AFFILIATE_CONNECTOR_SECRET` — 도시락 `DOSIRAK_AFFILIATE_CONNECTOR_SECRET`과 동일
+- `DOSIRAK_AFFILIATE_CONNECTOR_SECRET`
+- `AIBAEBY_MERCHANT_DRAFT_URL` — 예: `https://aibaeby.com/api/affiliate/merchant-draft`
+- `AIBAEBY_AFFILIATE_CONNECTOR_SECRET` — aibaeby API 호스트와 동일
 
 ## DNA 계층 분리
 
@@ -64,10 +66,10 @@ Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 ## 다음 Phase (HQ 승인 후)
 
 1. ~~`dosirak.store` vendor-draft API 연결~~ (Phase A draft 배선 완료 — 정산 미포함)
-2. `aibaeby.com` 가입/앱 설치 커넥터 스키마 확정
+2. ~~`aibaeby.com` merchant-draft + participation 능력치~~ (Phase A draft/참관 배선 — 정산 미포함)
 3. 템플릿 인스턴스별 merchant profile vault (PII 최소·암호화)
 4. 정산 연결은 AML/HQ gate 통과 후에만
-5. 도시락 Netlify에 `GAS_WEBAPP_URL` + `DOSIRAK_AFFILIATE_CONNECTOR_SECRET` 배포 확인
+5. 도시락/배비 API 호스트 env·배포 확인
 
 ## 검증
 

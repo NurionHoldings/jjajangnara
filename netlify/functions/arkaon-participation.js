@@ -13,9 +13,13 @@ const {
   planOnboarding,
 } = require("./_arkaon-platform-onboarding");
 const {
-  describeConnectorReadiness,
+  describeConnectorReadiness: describeDosirakReadiness,
   postVendorDraft,
 } = require("./_dosirak-vendor-draft-connector");
+const {
+  describeConnectorReadiness: describeAibaebyReadiness,
+  postMerchantDraft,
+} = require("./_aibaeby-merchant-draft-connector");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -181,32 +185,43 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       data: {
-        dosirak: describeConnectorReadiness(),
+        dosirak: describeDosirakReadiness(),
+        aibaeby: describeAibaebyReadiness(),
         note: "정산·지급 실행 없음. draft만.",
       },
     });
   }
 
   /**
-   * Consent-gated affiliate draft execute (dosirak.store first).
-   * Body: { platformId, consents:{privacyAt,termsAt}, merchant:{phone,...}, dryRun?, command? }
+   * Consent-gated affiliate draft execute (dosirak.store | aibaeby.com).
+   * Body: { platformId, consents:{privacyAt,termsAt}, merchant:{phone,...}, dryRun? }
    */
   if (event.httpMethod === "POST" && action === "onboarding-execute") {
     const platformId = String(body.platformId || body.platform || "dosirak.store").trim();
-    if (platformId !== "dosirak.store") {
+    let result;
+    if (platformId === "dosirak.store") {
+      result = await postVendorDraft({
+        dryRun: body.dryRun === true,
+        consents: body.consents || {},
+        merchant: body.merchant || {},
+        memo: body.memo,
+      });
+    } else if (platformId === "aibaeby.com") {
+      result = await postMerchantDraft({
+        dryRun: body.dryRun === true,
+        consents: body.consents || {},
+        merchant: body.merchant || {},
+      });
+    } else {
       return json(422, {
         success: false,
         code: "PLATFORM_NOT_WIRED",
-        message: "Phase A execute는 dosirak.store vendor-draft만 지원",
+        message: "Phase A execute는 dosirak.store / aibaeby.com 만 지원",
       });
     }
 
-    const result = await postVendorDraft({
-      dryRun: body.dryRun === true,
-      consents: body.consents || {},
-      merchant: body.merchant || {},
-      memo: body.memo,
-    });
+    const readiness =
+      platformId === "aibaeby.com" ? describeAibaebyReadiness() : describeDosirakReadiness();
 
     const row = {
       id: id(),
@@ -217,19 +232,19 @@ exports.handler = async (event) => {
       code: result.code || null,
       draft_id: result.draft_id || null,
       dry_run: Boolean(result.dry_run || body.dryRun),
-      // 시크릿·전화 전문·계좌 저장 금지
       planSummary: stripSecrets({
         statusCode: result.statusCode || null,
         draft_status: result.draft_status || null,
         resume_url: result.resume_url || null,
-        connector: describeConnectorReadiness(),
+        connector: readiness,
       }),
       created_at: new Date().toISOString(),
     };
     store.onboarding_dna.push(row);
     saveStore(store);
 
-    const status = result.ok ? 200 : result.code === "CONSENT_REQUIRED" || result.code === "PHONE_REQUIRED" ? 400 : 422;
+    const status =
+      result.ok ? 200 : result.code === "CONSENT_REQUIRED" || result.code === "PHONE_REQUIRED" ? 400 : 422;
     return json(status, { success: result.ok, data: result, dnaId: row.id });
   }
 
