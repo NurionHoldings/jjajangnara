@@ -133,6 +133,33 @@
       "work_split": [],
       "announced_at": "2026-09-12T05:10:16.167Z",
       "closed_at": "2026-09-12T05:10:16.168Z"
+    },
+    {
+      "id": "199d3ea7-2155-4297-935a-c94e3ba10159",
+      "agent": "gpt",
+      "purpose": "hardening",
+      "areas": [],
+      "requests": [],
+      "status": "closed",
+      "work_split": [],
+      "announced_at": "2026-09-12T05:14:21.071Z",
+      "closed_at": "2026-09-12T05:14:21.072Z"
+    },
+    {
+      "id": "d4568acf-1864-400a-aa51-b96b248fa741",
+      "source": "gpt",
+      "purpose": "free-template provision hook + merchant CTA",
+      "areas": [
+        "peer-mesh",
+        "template-provision",
+        "free-template-onboard"
+      ],
+      "requests": [
+        "peer review beom"
+      ],
+      "status": "closed",
+      "announced_at": "2026-09-12T05:14:56.043Z",
+      "closed_at": "2026-09-12T05:14:56.043Z"
     }
   ],
   "change_dna": [
@@ -326,6 +353,27 @@
         "netlify/functions/_arkaon-peer-mesh.js"
       ],
       "created_at": "2026-09-12T05:10:31.833Z"
+    },
+    {
+      "id": "7c2463ba-7a6f-4329-be34-1c7b8447495c",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "무료 템플릿 template-provision 훅 + /free-template-onboard.html CTA. peer hello 자동, draft/정산 미실행. 공개 free-template-cta.",
+      "return_point": "peer-mesh/README.md",
+      "return_checklist": [
+        "Netlify deploy free-template-onboard.html",
+        "PEER_HANDSHAKE_URL env",
+        "peer review beom"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_PEER_MESH.md",
+        "peer-mesh/provision.mjs"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_arkaon-template-provision.js",
+        "free-template-onboard.html"
+      ],
+      "created_at": "2026-09-12T05:14:56.043Z"
     }
   ],
   "cross_checks": [
@@ -408,11 +456,21 @@
       "summary": "Peer Mesh 무료템플릿 교신 peer review",
       "status": "pending",
       "announced_at": "2026-09-12T05:10:31.833Z"
+    },
+    {
+      "id": "25d82d5e-eebd-4e67-892e-507cd203c76a",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "7c2463ba-7a6f-4329-be34-1c7b8447495c",
+      "summary": "template-provision + merchant CTA peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T05:14:56.043Z"
     }
   ],
   "wake": {
     "status": "awake",
-    "last_traffic_at": "2026-09-12T04:54:20.845Z"
+    "last_traffic_at": "2026-09-12T05:14:21.176Z"
   },
   "onboarding_dna": [
     {
@@ -1105,6 +1163,116 @@
         }
       },
       "created_at": "2026-09-12T05:10:16.162Z"
+    },
+    {
+      "id": "342787e6-9142-4d08-8abb-7cc501dea4b0",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T05:14:21.059Z"
+    },
+    {
+      "id": "e8a433ba-86e0-4221-86ff-ad3d40427339",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:14:21.064Z"
+    },
+    {
+      "id": "6f57ed4f-5d70-404f-a63c-31fac125c076",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:14:21.065Z"
     }
   ],
   "template_binds": [],
@@ -1136,6 +1304,20 @@
         "redacted": true
       },
       "created_at": "2026-09-12T05:10:16.164Z"
+    },
+    {
+      "id": "0c1039e9-8cd8-4b7c-a837-5b93ccd35429",
+      "layer": "template_bind_dna",
+      "kind": "template_instance_bind",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "bind_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "redacted": true
+      },
+      "created_at": "2026-09-12T05:14:21.068Z"
     }
   ],
   "peer_mesh_dna": [
@@ -1150,6 +1332,83 @@
       "peerAction": "hello",
       "planSummary": {},
       "created_at": "2026-09-12T05:10:16.170Z"
+    },
+    {
+      "id": "a1ec324c-4bf0-4da9-8e12-76cdeb5d6e90",
+      "layer": "peer_mesh_dna",
+      "kind": "peer_handshake",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "PEER_ENV_MISSING",
+      "session_id": null,
+      "peerAction": "hello",
+      "planSummary": {},
+      "created_at": "2026-09-12T05:14:21.074Z"
+    },
+    {
+      "id": "bb805f86-8125-49c0-b3dd-cb7032b44108",
+      "layer": "peer_mesh_dna",
+      "kind": "template_provision",
+      "platformId": "dosirak.store",
+      "ok": true,
+      "code": "PEER_ENV_PARTIAL",
+      "session_id": "pm_mtxxkemt_3cca008d",
+      "planSummary": {
+        "instance_id": "tpl_mtxxkemt_7a496c",
+        "peer": {
+          "ran": true,
+          "okCount": 0,
+          "total": 1,
+          "envBlocked": true,
+          "codes": [
+            {
+              "platformId": "dosirak.store",
+              "peerAction": "hello",
+              "ok": false,
+              "code": "PEER_ENV_MISSING"
+            }
+          ]
+        },
+        "cta": {
+          "localPage": "/free-template-onboard.html",
+          "platforms": [
+            {
+              "id": "dosirak.store",
+              "onboardUrl": "https://도시락.store/vendor-apply.html"
+            }
+          ]
+        }
+      },
+      "created_at": "2026-09-12T05:14:21.078Z"
+    },
+    {
+      "id": "ec6bf940-9120-4328-b0fd-6f9f1d07c718",
+      "layer": "peer_mesh_dna",
+      "kind": "template_provision",
+      "platformId": "dosirak.store",
+      "ok": true,
+      "code": "PROVISION_OK",
+      "session_id": "pm_mtxxkepj_670136ae",
+      "planSummary": {
+        "instance_id": "tpl_mtxxkepj_7b2edb",
+        "peer": {
+          "ran": false,
+          "okCount": 0,
+          "total": 0,
+          "envBlocked": false,
+          "codes": []
+        },
+        "cta": {
+          "localPage": "/free-template-onboard.html",
+          "platforms": [
+            {
+              "id": "dosirak.store",
+              "onboardUrl": "https://도시락.store/vendor-apply.html"
+            }
+          ]
+        }
+      },
+      "created_at": "2026-09-12T05:14:21.178Z"
     }
   ]
 }

@@ -72,12 +72,16 @@
       "peer_hello_platform_arkaon",
       "exchange_capabilities",
       "propose_onboard_playbook",
+      "open_merchant_cta_page",
       "request_merchant_consents",
       "post_affiliate_draft_or_bind",
       "issue_connect_assist_profile",
       "record_peer_mesh_dna",
       "await_hq_live_order_relay"
-    ]
+    ],
+    "merchantCta": "/free-template-onboard.html",
+    "agentApi": "template-provision",
+    "cli": "peer-mesh/provision.mjs"
   },
   "messageShape": {
     "required": ["protocol", "action", "from", "to", "session_id"],

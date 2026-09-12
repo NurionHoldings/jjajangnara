@@ -271,6 +271,7 @@ async function run() {
   assert.equal(freePlan.mode, "peer_mesh_orchestrate");
   assert.equal(freePlan.dnaLayer, "peer_mesh_dna");
   assert.ok(freePlan.nextActions.some((a) => a.type === "peer_hello"));
+  assert.ok(freePlan.nextActions.some((a) => a.type === "template_provision"));
   pass("command: 무료 템플릿 → FREE_TEMPLATE_ONBOARD peer mesh");
 
   const peerMesh = require("../netlify/functions/_arkaon-peer-mesh.js");
@@ -288,6 +289,49 @@ async function run() {
   assert.equal(peerMissing.statusCode, 422);
   assert.equal(JSON.parse(peerMissing.body).data.code, "PEER_ENV_MISSING");
   pass("API peer-mesh fail-closed without env");
+
+  delete process.env.ARKAON_DEV_FAIL_OPEN;
+  delete process.env.ARKAON_AGENT_HANDOFF_SECRET;
+  const publicCta = await arkaon.handler({
+    httpMethod: "GET",
+    queryStringParameters: { action: "free-template-cta" },
+    headers: {},
+  });
+  assert.equal(publicCta.statusCode, 200);
+  const ctaBody = JSON.parse(publicCta.body);
+  assert.equal(ctaBody.success, true);
+  assert.equal(ctaBody.data.localPage, "/free-template-onboard.html");
+  assert.ok(ctaBody.data.platforms.some((p) => p.id === "dosirak.store" && p.onboardUrl));
+  pass("public free-template-cta without auth");
+
+  process.env.ARKAON_DEV_FAIL_OPEN = "1";
+  const provision = require("../netlify/functions/_arkaon-template-provision.js");
+  const dry = await provision.provisionFreeTemplate({
+    platformIds: ["dosirak.store"],
+    merchant: { shopName: "검증점" },
+    runPeer: false,
+  });
+  assert.equal(dry.ok, true);
+  assert.ok(String(dry.instance_id).length >= 4);
+  assert.equal(dry.peer.ran, false);
+  assert.equal(dry.cta.localPage, "/free-template-onboard.html");
+  pass("template-provision dry peer builds CTA");
+
+  const provisionApi = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "template-provision" },
+    headers: {},
+    body: JSON.stringify({
+      platformIds: ["dosirak.store"],
+      runPeer: true,
+      merchant: { shopName: "검증점" },
+    }),
+  });
+  assert.equal(provisionApi.statusCode, 200);
+  const provisionData = JSON.parse(provisionApi.body).data;
+  assert.equal(provisionData.intent, "FREE_TEMPLATE_ONBOARD");
+  assert.equal(provisionData.peer.envBlocked, true);
+  pass("API template-provision records peer env block without failing CTA");
 
   console.log("\nArkaon onboarding DNA verify: PASS");
 }

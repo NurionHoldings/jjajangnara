@@ -40,9 +40,11 @@ Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 
 | 장치 | 언제 | API |
 |------|------|-----|
-| **peer-mesh** | 무료 템플릿 배포 후 입점 유도 | `peer-mesh` → `/api/arkaon/peer-handshake` |
+| **peer-mesh** | 무료 템플릿 배포 후 입점 유도 | `peer-mesh` / `template-provision` → `/api/arkaon/peer-handshake` |
 | draft 입점 | 신규 신청 | `onboarding-execute` → vendor/merchant-draft |
 | **template-connect** | 이미 개설된 템플릿 + 기존 입점업체 | `template-connect-execute` → `/api/template-bind` |
+
+사업주 CTA: `/free-template-onboard.html` · CLI: `peer-mesh/provision.mjs`
 
 문서: `docs/ARKAON_PEER_MESH.md`
 

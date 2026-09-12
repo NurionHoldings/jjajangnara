@@ -38,6 +38,10 @@ const {
   loadPeerManifest,
   postPeerHandshake,
 } = require("./_arkaon-peer-mesh");
+const {
+  buildMerchantCtaPack,
+  provisionFreeTemplate,
+} = require("./_arkaon-template-provision");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -113,6 +117,15 @@ function guardExecute(store, body) {
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
+
+  const qs = event.queryStringParameters || {};
+  const action = qs.action || "wake";
+
+  /** Public merchant CTA pack — no secrets, no agent auth */
+  if (event.httpMethod === "GET" && action === "free-template-cta") {
+    return json(200, { success: true, data: buildMerchantCtaPack() });
+  }
+
   if (!authOk(event)) {
     return json(authFailureStatus(), {
       success: false,
@@ -128,8 +141,6 @@ exports.handler = async (event) => {
   if (!Array.isArray(store.template_binds)) store.template_binds = [];
   if (!Array.isArray(store.peer_mesh_dna)) store.peer_mesh_dna = [];
 
-  const qs = event.queryStringParameters || {};
-  const action = qs.action || "wake";
   let body = {};
   if (event.body) {
     try {
@@ -242,6 +253,76 @@ exports.handler = async (event) => {
         note: "draft / template-connect / peer-mesh. 정산·지급 실행 없음.",
       },
     });
+  }
+
+  /**
+   * Free template provision: issue instance + peer hello/capabilities/propose + merchant CTA.
+   * Body: { platformIds?: string[], merchant?: {}, runPeer?: boolean, peerActions?: string[] }
+   * Does not execute draft/bind/payout.
+   */
+  if (event.httpMethod === "POST" && action === "template-provision") {
+    try {
+      guardExecute(store, body);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+
+    let result;
+    try {
+      result = await provisionFreeTemplate({
+        platformIds: body.platformIds || body.platforms,
+        merchant: body.merchant || {},
+        runPeer: body.runPeer !== false,
+        peerActions: body.peerActions,
+      });
+    } catch (error) {
+      return json(422, {
+        success: false,
+        code: error.code || "PROVISION_FAILED",
+        message: error.message,
+      });
+    }
+
+    store.wake = store.wake || {};
+    store.wake.status = "awake";
+    store.wake.last_traffic_at = new Date().toISOString();
+
+    const row = {
+      id: id(),
+      layer: "peer_mesh_dna",
+      kind: "template_provision",
+      platformId: (result.platforms || []).join(",") || null,
+      ok: Boolean(result.ok),
+      code: result.peer?.envBlocked ? "PEER_ENV_PARTIAL" : "PROVISION_OK",
+      session_id: result.session_id || null,
+      planSummary: stripSecrets({
+        instance_id: result.instance_id,
+        peer: {
+          ran: result.peer?.ran,
+          okCount: result.peer?.okCount,
+          total: result.peer?.total,
+          envBlocked: result.peer?.envBlocked,
+          codes: (result.peer?.results || []).map((r) => ({
+            platformId: r.platformId,
+            peerAction: r.peerAction,
+            ok: r.ok,
+            code: r.code,
+          })),
+        },
+        cta: {
+          localPage: result.cta?.localPage,
+          platforms: (result.cta?.platforms || []).map((p) => ({
+            id: p.id,
+            onboardUrl: p.onboardUrl,
+          })),
+        },
+      }),
+      created_at: new Date().toISOString(),
+    };
+    store.peer_mesh_dna.push(row);
+    saveStore(store);
+
+    return json(200, { success: true, data: result, dnaId: row.id });
   }
 
   /**

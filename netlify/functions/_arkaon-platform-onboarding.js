@@ -184,6 +184,13 @@ function planOnboarding(commandText) {
   if (intent === "FREE_TEMPLATE_ONBOARD") {
     nextActions.push(
       {
+        type: "template_provision",
+        action: "template-provision",
+        platformIds: [platform.id],
+        note: "무료 템플릿 인스턴스 발급 + peer hello 자동",
+        merchantCta: "/free-template-onboard.html",
+      },
+      {
         type: "peer_hello",
         action: "peer-mesh",
         peerAction: "hello",

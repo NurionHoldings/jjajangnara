@@ -47,8 +47,15 @@ Auth: `X-ARKAON-PEER-KEY` = `ARKAON_PEER_MESH_SECRET` (또는 개발용 affiliat
 `peer_mesh_dna` — 입점 onboarding DNA / template_bind DNA / 고객 navigation DNA와 **혼합 금지**.  
 시크릿·계좌·bind_token 원문 저장 금지.
 
-## Phase A 경계
+## 프로비저닝 훅 (Phase A)
 
-- 교신·제안·초안/바인드 오케스트레이션만
-- 정산·AML 라이브·약관 대리수락 금지
-- 비계열 플랫폼 스크래핑 금지
+HQ/에이전트가 무료 템플릿을 만들면 `template-provision`이 인스턴스 ID를 발급하고 peer hello → capabilities → propose_onboard를 자동 호출한다.
+
+| 장치 | 경로 |
+|------|------|
+| API | `POST ?action=template-provision` |
+| CLI | `node peer-mesh/provision.mjs --platform both` |
+| 사업주 CTA | `/free-template-onboard.html` |
+| 공개 카피 | `GET ?action=free-template-cta` (시크릿·인증 없음) |
+
+동의 전 draft/bind/정산은 실행하지 않는다.
