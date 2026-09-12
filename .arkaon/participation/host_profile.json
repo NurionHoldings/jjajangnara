@@ -3,16 +3,40 @@
   "primary_api_host": "netlify",
   "edge_host": "netlify",
   "handoff_secret_policy": "netlify_env_sufficient",
+  "phase": "A",
+  "vertical_template": "restaurant-delivery-template",
+  "affiliate_platforms": [
+    {
+      "id": "dosirak.store",
+      "relation": "affiliate",
+      "role": "onboarding_target"
+    },
+    {
+      "id": "aibaeby.com",
+      "relation": "affiliate",
+      "role": "onboarding_target"
+    }
+  ],
+  "policy_packs": [
+    "arkaon-participation@phase-a",
+    "arkaon-collab-rules@phase-a",
+    "arkaon-platform-onboarding-dna@phase-a"
+  ],
   "notices": [
     {
       "code": "NETLIFY_VS_API_HOST",
       "severity": "info",
-      "summary": "JJAJANGNARA: Netlify env의 ARKAON_AGENT_HANDOFF_SECRET만으로 handoff 가능."
+      "summary": "JJAJANGNARA: Netlify env의 ARKAON_AGENT_HANDOFF_SECRET으로 handoff 충분."
+    },
+    {
+      "code": "PLATFORM_ONBOARDING_PREPARE_ONLY",
+      "severity": "info",
+      "summary": "입점/앱가입은 Phase A에서 제안·플레이북만. 정산·지급 자동 실행 금지."
     },
     {
       "code": "DEFER_PER_PLATFORM_OK",
       "severity": "info",
-      "summary": "시크릿 미설정 시 폴백 가능. 추후 플랫폼별 분석 후 개별 적용해도 됩니다."
+      "summary": "커넥터 미배선 시 플레이북 제안만. 플랫폼별 분석 후 HQ가 라이브 승인."
     }
   ],
   "secret_hosts": [
@@ -21,5 +45,10 @@
       "role": "functions",
       "handoff": "sufficient"
     }
-  ]
+  ],
+  "aml": {
+    "live_gate_wired": false,
+    "enabled": false,
+    "stub": true
+  }
 }

@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "JJAJANGNARA_PLATFORM_ONBOARDING_DNA_V1",
+  "phase": "A",
+  "status": "PREPARE_ONLY",
+  "productTemplate": {
+    "id": "restaurant-delivery-template",
+    "vertical": "restaurant",
+    "instance": "JJAJANGNARA",
+    "purpose": "업종 템플릿 사업주가 지정 배달/중개 플랫폼에 막힘없이 입점·앱가입하도록 Arkaon이 절차를 오케스트레이션한다."
+  },
+  "authority": {
+    "arkaon": ["observe", "propose", "orchestrate_approved_connectors", "record_intent_dna"],
+    "forbidden": [
+      "execute_payout",
+      "mutate_bank_account_without_hq",
+      "guess_aml_approved",
+      "auto_accept_third_party_tos_without_merchant_consent",
+      "scrape_non_affiliate_platforms",
+      "expand_payment_refund_sanction_authority"
+    ],
+    "hqOnly": ["risk_acceptance", "live_connector_enable", "settlement_go_live"]
+  },
+  "commandIntents": [
+    {
+      "intent": "PLATFORM_ONBOARD",
+      "aliases": ["입점", "입점해줘", "플랫폼 등록", "가게 등록", "벤더 등록"],
+      "requiresPlatform": true
+    },
+    {
+      "intent": "APP_INSTALL",
+      "aliases": ["앱 다운로드", "앱설치", "PWA 설치", "포스앱 설치", "어플 다운"],
+      "requiresPlatform": true
+    },
+    {
+      "intent": "SIGNUP_UNBLOCK",
+      "aliases": ["가입", "회원가입", "가입 막힘", "가입 도와줘"],
+      "requiresPlatform": true
+    }
+  ],
+  "platforms": [
+    {
+      "id": "dosirak.store",
+      "displayName": "도시락.store",
+      "relation": "affiliate",
+      "status": "ready_for_connector_design",
+      "publicBase": "https://도시락.store",
+      "onboardingEntry": "/vendor-apply.html",
+      "signupEntry": "/signup.html",
+      "connectorMode": "first_party_api_preferred",
+      "capabilities": ["vendor_apply", "menu_draft", "consent_capture", "app_install_guide"],
+      "menuSyncSource": "netlify/functions/_menu-catalog.js",
+      "notes": "계열 중개 플랫폼. 입점 신청 UI/약관이 이미 존재. Arkaon은 템플릿 상점 프로필→입점 초안 자동 매핑을 준비한다."
+    },
+    {
+      "id": "aibaeby.com",
+      "displayName": "aibaeby.com",
+      "relation": "affiliate",
+      "status": "declared",
+      "publicBase": "https://aibaeby.com",
+      "onboardingEntry": "/onboarding",
+      "signupEntry": "/signup",
+      "connectorMode": "first_party_api_preferred",
+      "capabilities": ["merchant_signup", "app_install_guide", "template_bind"],
+      "notes": "계열사 선언. 커넥터 URL/스키마는 HQ 확정 후 wiring. Phase A는 플레이북·필드 매핑만."
+    }
+  ],
+  "playbooks": {
+    "PLATFORM_ONBOARD": [
+      "resolve_platform",
+      "load_template_merchant_profile",
+      "build_field_mapping",
+      "request_merchant_consents",
+      "open_or_post_affiliate_draft",
+      "sync_menu_catalog_snapshot",
+      "record_onboarding_dna",
+      "await_hq_go_live_if_settlement"
+    ],
+    "APP_INSTALL": [
+      "resolve_platform",
+      "detect_device_capabilities",
+      "serve_pwa_or_store_link",
+      "guide_permission_mic_notify_if_needed",
+      "verify_install_complete",
+      "record_onboarding_dna"
+    ],
+    "SIGNUP_UNBLOCK": [
+      "resolve_platform",
+      "diagnose_blockers",
+      "prefill_allowed_fields",
+      "resume_incomplete_steps",
+      "never_bypass_required_consents",
+      "record_onboarding_dna"
+    ]
+  },
+  "fieldMapping": {
+    "fromTemplate": [
+      "storeName",
+      "phone",
+      "address",
+      "businessHours",
+      "menuCatalogIds",
+      "deliveryRadiusOrZones",
+      "utensilsDefault"
+    ],
+    "neverAutoFill": ["bankAccount", "residentId", "secrets", "paymentKeys"],
+    "hqConfirmRequired": ["settlementAccount", "businessRegistrationNumber", "contractSigned"]
+  },
+  "successCriteriaPhaseA": [
+    "입점/앱다운로드/가입 명령을 Intent로 해석한다",
+    "계열 플랫폼별 플레이북을 반환한다",
+    "결제·정산·AML 실행을 자동으로 하지 않는다",
+    "비계열 플랫폼 스크래핑을 거부한다",
+    "Change Intent DNA / navigation DNA를 분리 기록한다"
+  ]
+}

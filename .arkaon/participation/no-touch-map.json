@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "product": "JJAJANGNARA",
+  "bannedPathPrefixes": [
+    ".env",
+    "secrets/",
+    "payment-config.js"
+  ],
+  "bannedActions": [
+    "execute_payout",
+    "execute_refund",
+    "mutate_bank_account",
+    "enable_rc1_flag_in_prod",
+    "main_merge_without_hq",
+    "deploy_without_hq",
+    "scrape_non_affiliate_delivery_platform",
+    "auto_accept_tos_without_merchant_click"
+  ],
+  "notes": [
+    "Arkaon may propose onboarding steps only until HQ wires affiliate connectors.",
+    "Member/customer navigation DNA stays separate from change/onboarding DNA."
+  ]
+}

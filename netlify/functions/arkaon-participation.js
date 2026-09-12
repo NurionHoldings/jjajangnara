@@ -1,5 +1,5 @@
 /**
- * ARKAON HQ participation (visit / change DNA / cross-check / wake pulse)
+ * ARKAON HQ participation (visit / change DNA / cross-check / wake / platform onboarding DNA)
  * Capability only — no finance mutate. Auth: X-ARKAON-AGENT-KEY or ARKAON_AGENT_HANDOFF_SECRET.
  */
 "use strict";
@@ -7,6 +7,11 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const {
+  loadManifest,
+  loadNoTouch,
+  planOnboarding,
+} = require("./_arkaon-platform-onboarding");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -28,7 +33,13 @@ function loadStore() {
     const raw = fs.readFileSync(STORE_PATH, "utf8");
     return JSON.parse(raw);
   } catch (_) {
-    return { visits: [], change_dna: [], cross_checks: [], wake: { status: "asleep", last_traffic_at: null } };
+    return {
+      visits: [],
+      change_dna: [],
+      cross_checks: [],
+      onboarding_dna: [],
+      wake: { status: "asleep", last_traffic_at: null },
+    };
   }
 }
 
@@ -42,7 +53,7 @@ function authOk(event) {
   const provided = String(
     (event.headers && (event.headers["x-arkaon-agent-key"] || event.headers["X-ARKAON-AGENT-KEY"])) || ""
   ).trim();
-  if (expected.length < 16) return true; // local/dev without secret
+  if (expected.length < 16) return true;
   if (provided.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
 }
@@ -72,11 +83,21 @@ function id() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
 }
 
+function stripSecrets(value) {
+  const text = JSON.stringify(value);
+  if (/sk_live|sk_test|password|accountNumber|주민/i.test(text)) {
+    return { redacted: true };
+  }
+  return value;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
   if (!authOk(event)) return json(401, { success: false, message: "unauthorized" });
 
   const store = loadStore();
+  if (!Array.isArray(store.onboarding_dna)) store.onboarding_dna = [];
+
   const qs = event.queryStringParameters || {};
   const action = qs.action || "wake";
   let body = {};
@@ -98,6 +119,58 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === "GET" && action === "host-profile") {
     return json(200, { success: true, data: loadHostProfile() });
+  }
+
+  if (event.httpMethod === "GET" && action === "no-touch-map") {
+    return json(200, { success: true, data: loadNoTouch() });
+  }
+
+  if (event.httpMethod === "GET" && action === "platform-registry") {
+    const manifest = loadManifest();
+    if (!manifest) return json(404, { success: false, message: "manifest missing" });
+    return json(200, {
+      success: true,
+      data: {
+        phase: manifest.phase,
+        status: manifest.status,
+        platforms: manifest.platforms,
+        commandIntents: manifest.commandIntents,
+      },
+    });
+  }
+
+  if (event.httpMethod === "POST" && action === "onboarding-intent") {
+    const command = String(body.command || body.text || "").slice(0, 500);
+    if (!command) {
+      return json(400, { success: false, message: "command required", code: "COMMAND_REQUIRED" });
+    }
+    const plan = planOnboarding(command);
+    const row = {
+      id: id(),
+      layer: "onboarding_dna",
+      command: command.slice(0, 200),
+      ok: Boolean(plan.ok),
+      intent: plan.intent || null,
+      platformId: plan.platform?.id || null,
+      code: plan.code || null,
+      // 시크릿·계좌·주민번호 등 저장 금지
+      planSummary: stripSecrets({
+        mode: plan.mode,
+        playbook: plan.playbook,
+        nextActions: plan.nextActions,
+        platform: plan.platform
+          ? { id: plan.platform.id, status: plan.platform.status }
+          : null,
+      }),
+      created_at: new Date().toISOString(),
+    };
+    store.onboarding_dna.push(row);
+    saveStore(store);
+    return json(plan.ok ? 200 : 422, { success: plan.ok, data: plan, dnaId: row.id });
+  }
+
+  if (event.httpMethod === "GET" && action === "onboarding-dna") {
+    return json(200, { success: true, data: store.onboarding_dna.slice(-50).reverse() });
   }
 
   if (event.httpMethod === "GET" && action === "agent-visits") {

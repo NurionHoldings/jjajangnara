@@ -38,6 +38,27 @@ Netlify Functions만이면 Netlify env만으로 충분. 미설정 시 `.arkaon/p
 |--------|------|
 | visit | 방문·요청·업무분장 |
 | change_dna | 코드 수정 맥락 |
+| onboarding_dna | 계열 플랫폼 입점·앱가입·가입 막힘 해소 (제안/오케스트레이션) |
 | cross_check | 범↔GPT peer review |
 | wake | 접속 동시 감지 |
 | readiness / no-touch | 설정 여부·금지 prefix |
+
+## Platform onboarding (Phase A)
+- Manifest: `.arkaon/participation/platform-onboarding-manifest.json`
+- Docs: `docs/ARKAON_PLATFORM_ONBOARDING_DNA.md`
+- API: `platform-registry` / `onboarding-intent` / `onboarding-dna` / `no-touch-map`
+- 계열 우선: `dosirak.store`, `aibaeby.com`
+- 비계열 스크래핑·정산 자동실행·약관 대리수락 금지
+- 회원/고객 항해 DNA와 입점 DNA 혼합 금지
+
+## Payment / AML pre-brief (required)
+
+Before payment/settlement/payout work, open AML guidance for this product.
+Arkaon may analyze and propose only. AML approval, payout/refund execution, status guessing, and secret/PII reporting are forbidden.
+Phase A keeps live payout gate unwired (INICIS_OPENMALL_AML_LIVE_GATE_WIRED=false).
+
+## Evidence-backed collaboration rules
+
+Record Work Contract scope, no-touch, completion criteria, and test plan before work.
+Do not report no_evidence/stalled as in-progress execution.
+Commits/tests/CI/deploy need reference + HEAD SHA proof. HQ alone confirms decisions and risk acceptance.
