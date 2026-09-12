@@ -12,6 +12,10 @@ const {
   loadNoTouch,
   planOnboarding,
 } = require("./_arkaon-platform-onboarding");
+const {
+  describeConnectorReadiness,
+  postVendorDraft,
+} = require("./_dosirak-vendor-draft-connector");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -171,6 +175,62 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === "GET" && action === "onboarding-dna") {
     return json(200, { success: true, data: store.onboarding_dna.slice(-50).reverse() });
+  }
+
+  if (event.httpMethod === "GET" && action === "connector-readiness") {
+    return json(200, {
+      success: true,
+      data: {
+        dosirak: describeConnectorReadiness(),
+        note: "정산·지급 실행 없음. draft만.",
+      },
+    });
+  }
+
+  /**
+   * Consent-gated affiliate draft execute (dosirak.store first).
+   * Body: { platformId, consents:{privacyAt,termsAt}, merchant:{phone,...}, dryRun?, command? }
+   */
+  if (event.httpMethod === "POST" && action === "onboarding-execute") {
+    const platformId = String(body.platformId || body.platform || "dosirak.store").trim();
+    if (platformId !== "dosirak.store") {
+      return json(422, {
+        success: false,
+        code: "PLATFORM_NOT_WIRED",
+        message: "Phase A execute는 dosirak.store vendor-draft만 지원",
+      });
+    }
+
+    const result = await postVendorDraft({
+      dryRun: body.dryRun === true,
+      consents: body.consents || {},
+      merchant: body.merchant || {},
+      memo: body.memo,
+    });
+
+    const row = {
+      id: id(),
+      layer: "onboarding_dna",
+      kind: "execute_draft",
+      platformId,
+      ok: Boolean(result.ok),
+      code: result.code || null,
+      draft_id: result.draft_id || null,
+      dry_run: Boolean(result.dry_run || body.dryRun),
+      // 시크릿·전화 전문·계좌 저장 금지
+      planSummary: stripSecrets({
+        statusCode: result.statusCode || null,
+        draft_status: result.draft_status || null,
+        resume_url: result.resume_url || null,
+        connector: describeConnectorReadiness(),
+      }),
+      created_at: new Date().toISOString(),
+    };
+    store.onboarding_dna.push(row);
+    saveStore(store);
+
+    const status = result.ok ? 200 : result.code === "CONSENT_REQUIRED" || result.code === "PHONE_REQUIRED" ? 400 : 422;
+    return json(status, { success: result.ok, data: result, dnaId: row.id });
   }
 
   if (event.httpMethod === "GET" && action === "agent-visits") {

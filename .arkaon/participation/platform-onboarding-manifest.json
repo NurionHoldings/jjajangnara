@@ -43,14 +43,16 @@
       "id": "dosirak.store",
       "displayName": "도시락.store",
       "relation": "affiliate",
-      "status": "ready_for_connector_design",
+      "status": "connector_wired_draft",
       "publicBase": "https://도시락.store",
       "onboardingEntry": "/vendor-apply.html",
       "signupEntry": "/signup.html",
-      "connectorMode": "first_party_api_preferred",
-      "capabilities": ["vendor_apply", "menu_draft", "consent_capture", "app_install_guide"],
+      "connectorMode": "first_party_api",
+      "draftEndpoint": "/api/vendor-draft",
+      "capabilities": ["vendor_apply", "menu_draft", "consent_capture", "app_install_guide", "affiliate_draft_api"],
       "menuSyncSource": "netlify/functions/_menu-catalog.js",
-      "notes": "계열 중개 플랫폼. 입점 신청 UI/약관이 이미 존재. Arkaon은 템플릿 상점 프로필→입점 초안 자동 매핑을 준비한다."
+      "envRequired": ["DOSIRAK_VENDOR_DRAFT_URL", "DOSIRAK_AFFILIATE_CONNECTOR_SECRET"],
+      "notes": "계열 중개. vendor-draft API 배선됨. 동의·전화 필수, 계좌/사진 자동수집 금지. 정산 라이브는 HQ."
     },
     {
       "id": "aibaeby.com",

@@ -172,10 +172,22 @@ function planOnboarding(commandText) {
         type: "await_merchant_consent",
         required: true,
       },
+      ...(platform.id === "dosirak.store" && intent === "PLATFORM_ONBOARD"
+        ? [
+            {
+              type: "post_affiliate_draft",
+              action: "onboarding-execute",
+              platformId: "dosirak.store",
+              requiredConsents: ["privacyAt", "termsAt"],
+              requiredMerchant: ["phone"],
+              note: "동의·전화 확보 후 vendor-draft POST (계좌 자동기입 금지)",
+            },
+          ]
+        : []),
       {
         type: "hq_wire_connector",
-        required: platform.status !== "live",
-        note: "커넥터 라이브는 HQ 승인 후",
+        required: platform.status === "declared" || platform.status === "ready_for_connector_design",
+        note: "커넥터 라이브/정산은 HQ 승인 후",
       },
     ],
     forbidden: manifest.authority?.forbidden || [],

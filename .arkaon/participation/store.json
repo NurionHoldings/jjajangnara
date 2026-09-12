@@ -74,6 +74,25 @@
       "status": "announced",
       "work_split": [],
       "announced_at": "2026-09-12T03:42:33.743Z"
+    },
+    {
+      "id": "019dc1f4-7a9c-4ecb-be61-b160d47e925d",
+      "agent": "gpt",
+      "purpose": "dosirak.store vendor draft connector 실배선",
+      "areas": [
+        "netlify/functions",
+        ".arkaon/participation",
+        "도시락.store vendor API"
+      ],
+      "requests": [
+        "no payout exec",
+        "no secrets in DNA",
+        "affiliate first-party only"
+      ],
+      "status": "closed",
+      "announced_at": "2026-09-12T03:49:38.017Z",
+      "work_split": [],
+      "closed_at": "2026-09-12T04:09:10.885Z"
     }
   ],
   "change_dna": [
@@ -157,6 +176,30 @@
         "netlify/functions/arkaon-participation.js"
       ],
       "created_at": "2026-09-12T03:46:41.004Z"
+    },
+    {
+      "id": "e43fbeae-63a1-42d1-ad10-45d62756935e",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "dosirak.store vendor-draft first-party connector 실배선: 도시락 /api/vendor-draft + JJAJANGNARA onboarding-execute(동의·전화 게이트). 계좌/정산 자동실행 없음.",
+      "return_point": "feat/arkaon-platform-onboarding-dna + 도시락 chore/arkaon-phase-a vendor-draft.cjs",
+      "return_checklist": [
+        "양쪽 Netlify env: DOSIRAK_VENDOR_DRAFT_URL + DOSIRAK_AFFILIATE_CONNECTOR_SECRET",
+        "도시락 GAS_WEBAPP_URL for live (dry_run은 GAS 불필요)",
+        "aibaeby connector 미배선 유지",
+        "RC1 flag OFF / no payout"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_PLATFORM_ONBOARDING_DNA.md",
+        "netlify/functions/_dosirak-vendor-draft-connector.js",
+        "도시락 netlify/functions/vendor-draft.cjs"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_dosirak-vendor-draft-connector.js",
+        "netlify/functions/arkaon-participation.js",
+        ".arkaon/participation/"
+      ],
+      "created_at": "2026-09-12T04:09:10.885Z"
     }
   ],
   "cross_checks": [
@@ -189,11 +232,21 @@
       "summary": "계열 플랫폼 입점 DNA Phase A peer review",
       "status": "pending",
       "announced_at": "2026-09-12T03:46:41.004Z"
+    },
+    {
+      "id": "680e6fbe-686c-430b-8255-370614c450be",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "e43fbeae-63a1-42d1-ad10-45d62756935e",
+      "summary": "dosirak vendor-draft 실배선 peer review: auth·forbidden fields·consent gate·env fail-closed",
+      "status": "pending",
+      "announced_at": "2026-09-12T04:09:10.885Z"
     }
   ],
   "wake": {
-    "status": "asleep",
-    "last_traffic_at": "2026-09-12T03:46:41.004Z"
+    "status": "awake",
+    "last_traffic_at": "2026-09-12T04:09:10.885Z"
   },
   "onboarding_dna": [
     {
@@ -323,6 +376,93 @@
         }
       },
       "created_at": "2026-09-12T03:46:25.984Z"
+    },
+    {
+      "id": "f35f7d96-ec82-41bf-a94c-ab457d896ec0",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T04:02:32.177Z"
+    },
+    {
+      "id": "89c832d4-dea3-4c98-8a34-8f4e707263d3",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T04:02:32.181Z"
     }
   ]
 }

@@ -26,6 +26,7 @@ async function run() {
   assert.equal(onboard.platform.id, "dosirak.store");
   assert.equal(onboard.mode, "propose_only");
   assert.ok(onboard.playbook.length >= 5);
+  assert.ok(onboard.nextActions.some((a) => a.type === "post_affiliate_draft"));
   pass("command: 입점 → dosirak playbook");
 
   const app = planner.planOnboarding("aibaeby 앱 다운로드");
@@ -52,6 +53,33 @@ async function run() {
   assert.ok(noTouch.bannedActions.includes("scrape_non_affiliate_delivery_platform"));
   pass("no-touch map loaded");
 
+  const connector = require("../netlify/functions/_dosirak-vendor-draft-connector.js");
+  const snap = connector.buildMenuCatalogSnapshot();
+  assert.ok(snap.menu_catalog_ids.includes("jjajang"));
+  assert.ok(snap.menu.includes("짜장면"));
+  pass("dosirak connector: menu catalog snapshot");
+
+  const payload = connector.buildVendorDraftPayload({
+    consents: {
+      privacyAt: "2026-09-12T00:00:00.000Z",
+      termsAt: "2026-09-12T00:00:00.000Z",
+    },
+    merchant: { phone: "01012345678" },
+    dryRun: true,
+  });
+  assert.equal(payload.data.biz_name.includes("짜장나라"), true);
+  assert.ok(!("account_no" in payload.data));
+  pass("dosirak connector: draft payload without bank");
+
+  let threw = false;
+  try {
+    connector.buildVendorDraftPayload({ consents: {}, merchant: { phone: "01012345678" } });
+  } catch (e) {
+    threw = e.code === "CONSENT_REQUIRED";
+  }
+  assert.equal(threw, true);
+  pass("dosirak connector: consent gate");
+
   const registry = await arkaon.handler({
     httpMethod: "GET",
     queryStringParameters: { action: "platform-registry" },
@@ -60,6 +88,8 @@ async function run() {
   assert.equal(registry.statusCode, 200);
   const registryBody = JSON.parse(registry.body);
   assert.equal(registryBody.success, true);
+  const dosirak = registryBody.data.platforms.find((p) => p.id === "dosirak.store");
+  assert.equal(dosirak.status, "connector_wired_draft");
   pass("API platform-registry");
 
   const intentRes = await arkaon.handler({
@@ -73,6 +103,34 @@ async function run() {
   assert.equal(intentBody.data.intent, "SIGNUP_UNBLOCK");
   assert.equal(intentBody.data.platform.id, "dosirak.store");
   pass("API onboarding-intent + DNA record");
+
+  const ready = await arkaon.handler({
+    httpMethod: "GET",
+    queryStringParameters: { action: "connector-readiness" },
+    headers: {},
+  });
+  assert.equal(ready.statusCode, 200);
+  pass("API connector-readiness");
+
+  const execMissing = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "onboarding-execute" },
+    headers: {},
+    body: JSON.stringify({
+      platformId: "dosirak.store",
+      dryRun: true,
+      consents: {
+        privacyAt: "2026-09-12T00:00:00.000Z",
+        termsAt: "2026-09-12T00:00:00.000Z",
+      },
+      merchant: { phone: "01012345678" },
+    }),
+  });
+  assert.equal(execMissing.statusCode, 422);
+  const execBody = JSON.parse(execMissing.body);
+  assert.equal(execBody.data.code, "CONNECTOR_ENV_MISSING");
+  assert.ok(execBody.data.draftPreview);
+  pass("API onboarding-execute fail-closed without env");
 
   console.log("\nArkaon onboarding DNA verify: PASS");
 }

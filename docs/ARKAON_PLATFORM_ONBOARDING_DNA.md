@@ -29,10 +29,28 @@ Base: `/.netlify/functions/arkaon-participation?action=...`
 |--------|--------|------|
 | `platform-registry` | GET | 계열 플랫폼·명령 Intent 목록 |
 | `onboarding-intent` | POST | `{ "command": "도시락.store 입점해줘" }` → 플레이북 |
+| `onboarding-execute` | POST | 동의·전화 확보 후 `dosirak.store` vendor-draft POST |
+| `connector-readiness` | GET | draft URL/시크릿 설정 여부(값 미노출) |
 | `onboarding-dna` | GET | 최근 입점 Intent DNA |
 | `no-touch-map` | GET | 자동 금지 목록 |
 
 Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
+
+### `onboarding-execute` (dosirak)
+
+```json
+{
+  "platformId": "dosirak.store",
+  "dryRun": true,
+  "consents": { "privacyAt": "2026-09-12T00:00:00.000Z", "termsAt": "2026-09-12T00:00:00.000Z" },
+  "merchant": { "phone": "01012345678" }
+}
+```
+
+환경변수(Netlify, 값 DNA 금지):
+
+- `DOSIRAK_VENDOR_DRAFT_URL` — 예: `https://도시락.store/api/vendor-draft`
+- `DOSIRAK_AFFILIATE_CONNECTOR_SECRET` — 도시락 `DOSIRAK_AFFILIATE_CONNECTOR_SECRET`과 동일
 
 ## DNA 계층 분리
 
@@ -45,10 +63,11 @@ Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 
 ## 다음 Phase (HQ 승인 후)
 
-1. `dosirak.store` first-party 입점 draft API 연결 (vendor-apply 필드 매핑)
+1. ~~`dosirak.store` vendor-draft API 연결~~ (Phase A draft 배선 완료 — 정산 미포함)
 2. `aibaeby.com` 가입/앱 설치 커넥터 스키마 확정
 3. 템플릿 인스턴스별 merchant profile vault (PII 최소·암호화)
 4. 정산 연결은 AML/HQ gate 통과 후에만
+5. 도시락 Netlify에 `GAS_WEBAPP_URL` + `DOSIRAK_AFFILIATE_CONNECTOR_SECRET` 배포 확인
 
 ## 검증
 

@@ -36,7 +36,12 @@
     {
       "code": "DEFER_PER_PLATFORM_OK",
       "severity": "info",
-      "summary": "커넥터 미배선 시 플레이북 제안만. 플랫폼별 분석 후 HQ가 라이브 승인."
+      "summary": "aibaeby 등 미배선 플랫폼은 플레이북 제안만. dosirak vendor-draft는 동의 게이트 후 execute."
+    },
+    {
+      "code": "DOSIRAK_VENDOR_DRAFT_ENV",
+      "severity": "info",
+      "summary": "실배선 env: DOSIRAK_VENDOR_DRAFT_URL + DOSIRAK_AFFILIATE_CONNECTOR_SECRET (값 미출력)."
     }
   ],
   "secret_hosts": [
