@@ -122,6 +122,17 @@
       "work_split": [],
       "announced_at": "2026-09-12T05:03:13.808Z",
       "closed_at": "2026-09-12T05:03:13.809Z"
+    },
+    {
+      "id": "367a6269-31cb-433b-b738-9b261cc4049f",
+      "agent": "gpt",
+      "purpose": "hardening",
+      "areas": [],
+      "requests": [],
+      "status": "closed",
+      "work_split": [],
+      "announced_at": "2026-09-12T05:10:16.167Z",
+      "closed_at": "2026-09-12T05:10:16.168Z"
     }
   ],
   "change_dna": [
@@ -295,6 +306,26 @@
         "netlify/functions/arkaon-participation.js"
       ],
       "created_at": "2026-09-12T05:03:24.478Z"
+    },
+    {
+      "id": "f3a5e2af-ee91-4d4e-9bb3-9cc797e4bdc7",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "Arkaon Peer Mesh Phase A: 무료 템플릿 입점 유도. 템플릿 Arkaon↔플랫폼 Arkaon hello/capabilities/propose_onboard. peer_mesh_dna 분리. 정산 금지.",
+      "return_point": "docs/ARKAON_PEER_MESH.md",
+      "return_checklist": [
+        "ARKAON_PEER_MESH_SECRET",
+        "DOSIRAK/AIBAEBY_PEER_HANDSHAKE_URL",
+        "peer review beom"
+      ],
+      "contract_pointers": [
+        ".arkaon/participation/peer-mesh-manifest.json",
+        "docs/ARKAON_PEER_MESH.md"
+      ],
+      "path_prefixes": [
+        "netlify/functions/_arkaon-peer-mesh.js"
+      ],
+      "created_at": "2026-09-12T05:10:31.833Z"
     }
   ],
   "cross_checks": [
@@ -367,6 +398,16 @@
       "summary": "Arkaon P0/P1 hardening peer review",
       "status": "pending",
       "announced_at": "2026-09-12T05:03:24.478Z"
+    },
+    {
+      "id": "3e67be7a-501f-4571-8add-d61484bc10f0",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "f3a5e2af-ee91-4d4e-9bb3-9cc797e4bdc7",
+      "summary": "Peer Mesh 무료템플릿 교신 peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T05:10:31.833Z"
     }
   ],
   "wake": {
@@ -954,6 +995,116 @@
         }
       },
       "created_at": "2026-09-12T05:03:13.803Z"
+    },
+    {
+      "id": "cad0f8c4-d6c1-4e5d-b01a-c01bd443b010",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T05:10:16.156Z"
+    },
+    {
+      "id": "f836ba52-da98-4fcc-b5eb-616df6847fba",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:10:16.160Z"
+    },
+    {
+      "id": "c305f56f-963e-41d2-b10a-8551f90aa512",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:10:16.162Z"
     }
   ],
   "template_binds": [],
@@ -971,6 +1122,34 @@
         "redacted": true
       },
       "created_at": "2026-09-12T05:03:13.805Z"
+    },
+    {
+      "id": "7a1ade9d-4822-4935-8626-70e983531881",
+      "layer": "template_bind_dna",
+      "kind": "template_instance_bind",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "bind_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "redacted": true
+      },
+      "created_at": "2026-09-12T05:10:16.164Z"
+    }
+  ],
+  "peer_mesh_dna": [
+    {
+      "id": "37397101-00d8-49a3-8945-9c7215fa5110",
+      "layer": "peer_mesh_dna",
+      "kind": "peer_handshake",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "PEER_ENV_MISSING",
+      "session_id": null,
+      "peerAction": "hello",
+      "planSummary": {},
+      "created_at": "2026-09-12T05:10:16.170Z"
     }
   ]
 }

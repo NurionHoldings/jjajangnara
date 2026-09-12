@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "ARKAON_PEER_MESH_V1",
+  "phase": "A",
+  "status": "PREPARE_AND_HANDSHAKE",
+  "businessPolicy": {
+    "id": "free_template_to_platform_onboard_v1",
+    "summary": "입점 유도를 위해 업종 템플릿을 무료 자동생성·배포하고, 템플릿에 탑재된 Arkaon이 플랫폼 Arkaon과 교신하여 입점 구축을 원활히 한다.",
+    "roles": {
+      "hq": ["template_catalog", "risk_acceptance", "live_relay_enable", "settlement_go_live"],
+      "template_arkaon": [
+        "wake",
+        "propose_onboard",
+        "peer_handshake",
+        "orchestrate_draft_or_bind",
+        "record_peer_mesh_dna"
+      ],
+      "platform_arkaon": [
+        "accept_peer_hello",
+        "advertise_capabilities",
+        "propose_platform_playbook",
+        "accept_affiliate_draft",
+        "accept_template_bind",
+        "record_peer_mesh_dna"
+      ],
+      "merchant": ["consent", "review_profile", "complete_required_docs"]
+    },
+    "forbidden": [
+      "execute_payout",
+      "mutate_bank_without_hq",
+      "auto_accept_tos_without_merchant",
+      "scrape_non_affiliate",
+      "expand_payment_refund_sanction_authority",
+      "silent_peer_without_consent_for_pii"
+    ]
+  },
+  "protocol": {
+    "name": "arkaon-peer-mesh",
+    "version": "1",
+    "contentType": "application/json",
+    "authHeader": "X-ARKAON-PEER-KEY",
+    "envSecret": "ARKAON_PEER_MESH_SECRET",
+    "fallbackEnvSecret": "DOSIRAK_AFFILIATE_CONNECTOR_SECRET|AIBAEBY_AFFILIATE_CONNECTOR_SECRET",
+    "actions": ["hello", "capabilities", "propose_onboard", "ack", "status"],
+    "sessionTtlSeconds": 3600,
+    "dnaLayer": "peer_mesh_dna"
+  },
+  "peers": [
+    {
+      "role": "template_arkaon",
+      "productFamily": "restaurant-delivery-template",
+      "exampleInstance": "JJAJANGNARA",
+      "endpointHint": "/.netlify/functions/arkaon-participation?action=peer-mesh"
+    },
+    {
+      "role": "platform_arkaon",
+      "platformId": "dosirak.store",
+      "endpoint": "/api/arkaon/peer-handshake"
+    },
+    {
+      "role": "platform_arkaon",
+      "platformId": "aibaeby.com",
+      "endpoint": "/api/arkaon/peer-handshake"
+    }
+  ],
+  "provisioningFunnel": {
+    "intent": "FREE_TEMPLATE_ONBOARD",
+    "aliases": ["무료 템플릿", "템플릿 만들고 입점", "자동 입점 유도", "템플릿 배포 입점"],
+    "steps": [
+      "provision_free_template_instance",
+      "wake_template_arkaon",
+      "peer_hello_platform_arkaon",
+      "exchange_capabilities",
+      "propose_onboard_playbook",
+      "request_merchant_consents",
+      "post_affiliate_draft_or_bind",
+      "issue_connect_assist_profile",
+      "record_peer_mesh_dna",
+      "await_hq_live_order_relay"
+    ]
+  },
+  "messageShape": {
+    "required": ["protocol", "action", "from", "to", "session_id"],
+    "fromFields": ["role", "product", "instance_id", "provisioning"],
+    "neverSend": ["bankAccount", "secrets", "paymentKeys", "rawIdCard", "bind_token"]
+  },
+  "successCriteriaPhaseA": [
+    "템플릿 Arkaon ↔ 플랫폼 Arkaon hello/capabilities 왕복",
+    "무료 템플릿 입점 Intent → 피어 플레이북 반환",
+    "동의 전 PII/계좌 자동 전송 금지",
+    "정산·지급 자동 실행 금지",
+    "peer_mesh_dna 계층 분리 기록"
+  ]
+}

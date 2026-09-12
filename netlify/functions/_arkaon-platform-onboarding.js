@@ -181,6 +181,30 @@ function planOnboarding(commandText) {
     },
   ];
 
+  if (intent === "FREE_TEMPLATE_ONBOARD") {
+    nextActions.push(
+      {
+        type: "peer_hello",
+        action: "peer-mesh",
+        peerAction: "hello",
+        platformId: platform.id,
+        note: "템플릿 Arkaon → 플랫폼 Arkaon hello",
+      },
+      {
+        type: "peer_capabilities",
+        action: "peer-mesh",
+        peerAction: "capabilities",
+        platformId: platform.id,
+      },
+      {
+        type: "peer_propose_onboard",
+        action: "peer-mesh",
+        peerAction: "propose_onboard",
+        platformId: platform.id,
+      }
+    );
+  }
+
   if (intent === "TEMPLATE_CONNECT") {
     nextActions.push({
       type: "post_template_bind",
@@ -224,7 +248,12 @@ function planOnboarding(commandText) {
   return {
     ok: true,
     phase: manifest.phase || "A",
-    mode: intent === "TEMPLATE_CONNECT" ? "template_connect_assist" : "propose_only",
+    mode:
+      intent === "TEMPLATE_CONNECT"
+        ? "template_connect_assist"
+        : intent === "FREE_TEMPLATE_ONBOARD"
+          ? "peer_mesh_orchestrate"
+          : "propose_only",
     intent,
     platform: {
       id: platform.id,
@@ -252,7 +281,12 @@ function planOnboarding(commandText) {
     nextActions,
     forbidden: manifest.authority?.forbidden || [],
     noTouchActions: noTouch.bannedActions || [],
-    dnaLayer: intent === "TEMPLATE_CONNECT" ? "template_bind_dna" : "onboarding_dna",
+    dnaLayer:
+      intent === "TEMPLATE_CONNECT"
+        ? "template_bind_dna"
+        : intent === "FREE_TEMPLATE_ONBOARD"
+          ? "peer_mesh_dna"
+          : "onboarding_dna",
     navigationDnaSeparate: true,
   };
 }

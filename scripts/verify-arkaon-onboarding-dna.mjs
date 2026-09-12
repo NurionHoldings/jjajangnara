@@ -265,6 +265,30 @@ async function run() {
   pass("agent auth fail-closed without secret");
   process.env.ARKAON_DEV_FAIL_OPEN = "1";
 
+  const freePlan = planner.planOnboarding("도시락 무료 템플릿 만들고 입점");
+  assert.equal(freePlan.ok, true);
+  assert.equal(freePlan.intent, "FREE_TEMPLATE_ONBOARD");
+  assert.equal(freePlan.mode, "peer_mesh_orchestrate");
+  assert.equal(freePlan.dnaLayer, "peer_mesh_dna");
+  assert.ok(freePlan.nextActions.some((a) => a.type === "peer_hello"));
+  pass("command: 무료 템플릿 → FREE_TEMPLATE_ONBOARD peer mesh");
+
+  const peerMesh = require("../netlify/functions/_arkaon-peer-mesh.js");
+  assert.ok(peerMesh.loadPeerManifest());
+  const peerMissing = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "peer-mesh" },
+    headers: {},
+    body: JSON.stringify({
+      platformId: "dosirak.store",
+      peerAction: "hello",
+      merchant: { instanceId: "jjajangnara-free-1" },
+    }),
+  });
+  assert.equal(peerMissing.statusCode, 422);
+  assert.equal(JSON.parse(peerMissing.body).data.code, "PEER_ENV_MISSING");
+  pass("API peer-mesh fail-closed without env");
+
   console.log("\nArkaon onboarding DNA verify: PASS");
 }
 

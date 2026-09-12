@@ -36,12 +36,16 @@ Base: `/.netlify/functions/arkaon-participation?action=...`
 
 Auth: `X-ARKAON-AGENT-KEY` (capability) — 역할 아님.
 
-## draft vs template-connect
+## draft vs template-connect vs peer-mesh
 
 | 장치 | 언제 | API |
 |------|------|-----|
+| **peer-mesh** | 무료 템플릿 배포 후 입점 유도 | `peer-mesh` → `/api/arkaon/peer-handshake` |
 | draft 입점 | 신규 신청 | `onboarding-execute` → vendor/merchant-draft |
 | **template-connect** | 이미 개설된 템플릿 + 기존 입점업체 | `template-connect-execute` → `/api/template-bind` |
+
+문서: `docs/ARKAON_PEER_MESH.md`
+
 
 커넥팅 보조: `connect-assist/` (정산 채널 비활성, bind 상태·메뉴 스냅샷·포스 힌트).
 

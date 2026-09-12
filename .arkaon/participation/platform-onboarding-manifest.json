@@ -23,6 +23,12 @@
   },
   "commandIntents": [
     {
+      "intent": "FREE_TEMPLATE_ONBOARD",
+      "aliases": ["무료 템플릿", "템플릿 만들고 입점", "자동 입점 유도", "템플릿 배포 입점", "무료로 만들어줘"],
+      "requiresPlatform": true,
+      "note": "무료 템플릿 프로비저닝 후 템플릿 Arkaon↔플랫폼 Arkaon peer-mesh 교신"
+    },
+    {
       "intent": "TEMPLATE_CONNECT",
       "aliases": ["실연동", "템플릿 연결", "이미 입점", "연동해줘", "커넥트", "바인드", "기존 업체 연동"],
       "requiresPlatform": true,
@@ -56,13 +62,15 @@
       "connectorMode": "first_party_api",
       "draftEndpoint": "/api/vendor-draft",
       "bindEndpoint": "/api/template-bind",
+      "peerHandshakeEndpoint": "/api/arkaon/peer-handshake",
       "capabilities": [
         "vendor_apply",
         "menu_draft",
         "consent_capture",
         "app_install_guide",
         "affiliate_draft_api",
-        "template_instance_bind"
+        "template_instance_bind",
+        "arkaon_peer_mesh"
       ],
       "menuSyncSource": "netlify/functions/_menu-catalog.js",
       "envRequired": [
@@ -84,13 +92,15 @@
       "draftEndpoint": "/api/affiliate/merchant-draft",
       "bindEndpoint": "/api/template-bind",
       "participationEndpoint": "/api/admin/arkaon/participation",
+      "peerHandshakeEndpoint": "/api/arkaon/peer-handshake",
       "capabilities": [
         "merchant_signup",
         "app_install_guide",
         "template_bind",
         "template_instance_bind",
         "affiliate_draft_api",
-        "arkaon_participation"
+        "arkaon_participation",
+        "arkaon_peer_mesh"
       ],
       "menuSyncSource": "netlify/functions/_menu-catalog.js",
       "envRequired": [
@@ -102,6 +112,18 @@
     }
   ],
   "playbooks": {
+    "FREE_TEMPLATE_ONBOARD": [
+      "provision_free_template_instance",
+      "wake_template_arkaon",
+      "peer_hello_platform_arkaon",
+      "exchange_capabilities",
+      "propose_onboard_playbook",
+      "request_merchant_consents",
+      "post_affiliate_draft_or_bind",
+      "issue_connect_assist_profile",
+      "record_peer_mesh_dna",
+      "await_hq_live_order_relay"
+    ],
     "TEMPLATE_CONNECT": [
       "resolve_platform",
       "load_existing_template_instance",

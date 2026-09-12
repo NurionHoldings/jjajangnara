@@ -33,6 +33,11 @@ const {
   describeConnectReadiness,
   postTemplateBind,
 } = require("./_template-connect-assist");
+const {
+  describePeerReadiness,
+  loadPeerManifest,
+  postPeerHandshake,
+} = require("./_arkaon-peer-mesh");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -121,6 +126,7 @@ exports.handler = async (event) => {
   if (!Array.isArray(store.onboarding_dna)) store.onboarding_dna = [];
   if (!Array.isArray(store.template_bind_dna)) store.template_bind_dna = [];
   if (!Array.isArray(store.template_binds)) store.template_binds = [];
+  if (!Array.isArray(store.peer_mesh_dna)) store.peer_mesh_dna = [];
 
   const qs = event.queryStringParameters || {};
   const action = qs.action || "wake";
@@ -169,7 +175,12 @@ exports.handler = async (event) => {
       return json(400, { success: false, message: "command required", code: "COMMAND_REQUIRED" });
     }
     const plan = planOnboarding(command);
-    const dnaLayer = plan.intent === "TEMPLATE_CONNECT" ? "template_bind_dna" : "onboarding_dna";
+    const dnaLayer =
+      plan.intent === "TEMPLATE_CONNECT"
+        ? "template_bind_dna"
+        : plan.intent === "FREE_TEMPLATE_ONBOARD"
+          ? "peer_mesh_dna"
+          : "onboarding_dna";
     const row = {
       id: id(),
       layer: dnaLayer,
@@ -189,6 +200,7 @@ exports.handler = async (event) => {
       created_at: new Date().toISOString(),
     };
     if (dnaLayer === "template_bind_dna") store.template_bind_dna.push(row);
+    else if (dnaLayer === "peer_mesh_dna") store.peer_mesh_dna.push(row);
     else store.onboarding_dna.push(row);
     saveStore(store);
     return json(plan.ok ? 200 : 422, { success: plan.ok, data: plan, dnaId: row.id });
@@ -202,6 +214,16 @@ exports.handler = async (event) => {
     return json(200, { success: true, data: store.template_bind_dna.slice(-50).reverse() });
   }
 
+  if (event.httpMethod === "GET" && action === "peer-mesh-dna") {
+    return json(200, { success: true, data: store.peer_mesh_dna.slice(-50).reverse() });
+  }
+
+  if (event.httpMethod === "GET" && action === "peer-mesh-manifest") {
+    const manifest = loadPeerManifest();
+    if (!manifest) return json(404, { success: false, message: "peer mesh manifest missing" });
+    return json(200, { success: true, data: manifest });
+  }
+
   if (event.httpMethod === "GET" && action === "connector-readiness") {
     return json(200, {
       success: true,
@@ -209,6 +231,7 @@ exports.handler = async (event) => {
         dosirak: describeDosirakReadiness(),
         aibaeby: describeAibaebyReadiness(),
         templateConnect: describeConnectReadiness(),
+        peerMesh: describePeerReadiness(),
         auth: {
           agentSecretConfigured:
             String(process.env.ARKAON_AGENT_HANDOFF_SECRET || "").trim().length >= 16,
@@ -216,9 +239,57 @@ exports.handler = async (event) => {
           storeDurable: false,
           storeNote: "Netlify Functions filesystem is ephemeral; treat DNA as session/local ledger",
         },
-        note: "draft=신규 입점, template-connect=기존 업체 실연동. 정산·지급 실행 없음.",
+        note: "draft / template-connect / peer-mesh. 정산·지급 실행 없음.",
       },
     });
+  }
+
+  /**
+   * Template Arkaon → Platform Arkaon peer mesh.
+   * Body: { platformId, peerAction: hello|capabilities|propose_onboard|ack|status, sessionId?, merchant? }
+   */
+  if (event.httpMethod === "POST" && action === "peer-mesh") {
+    try {
+      guardExecute(store, body);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+    let platformId;
+    try {
+      platformId = requirePlatformId(body, ["dosirak.store", "aibaeby.com"]);
+    } catch (error) {
+      return json(422, { success: false, code: error.code, message: error.message });
+    }
+
+    const result = await postPeerHandshake({
+      platformId,
+      action: body.peerAction || body.action || "hello",
+      sessionId: body.sessionId || body.session_id,
+      merchant: body.merchant || {},
+      payload: body.payload || {},
+    });
+
+    const row = {
+      id: id(),
+      layer: "peer_mesh_dna",
+      kind: "peer_handshake",
+      platformId,
+      ok: Boolean(result.ok),
+      code: result.code || null,
+      session_id: result.session_id || null,
+      peerAction: body.peerAction || body.action || "hello",
+      planSummary: stripSecrets({
+        peer: result.peer,
+        capabilities: result.capabilities,
+        next: result.next,
+      }),
+      created_at: new Date().toISOString(),
+    };
+    store.peer_mesh_dna.push(row);
+    saveStore(store);
+
+    const status = result.ok ? 200 : result.code === "PEER_ENV_MISSING" ? 422 : 502;
+    return json(status, { success: result.ok, data: result, dnaId: row.id });
   }
 
   /**
