@@ -33,9 +33,10 @@ const MENUS = Object.freeze({
 const OPTIONS = Object.freeze({
   large: { id: "large", name: "곱빼기", price: 1000 },
   double: { id: "double", name: "곱빼기", price: 1000 },
+  sauce: { id: "sauce", name: "짜장소스 추가", price: 1000 },
 });
 
-/** 세트 메인 슬롯 (빌더 m1~m7) */
+/** 세트 메인 슬롯 (빌더 m1~m8) — set-builder 업그레이드 포함 */
 const SET_MAINS = Object.freeze({
   m1: { id: "m1", name: "짜장면", extra: 0 },
   m2: { id: "m2", name: "짬뽕", extra: 0 },
@@ -44,7 +45,29 @@ const SET_MAINS = Object.freeze({
   m5: { id: "m5", name: "중화비빔밥", extra: 1000 },
   m6: { id: "m6", name: "제육덮밥", extra: 2000 },
   m7: { id: "m7", name: "잡채밥", extra: 3000 },
+  m8: { id: "m8", name: "마파두부밥", extra: 1000 },
 });
+
+/** set-builder 레거시 ID → 카탈로그 mainId */
+const SET_BUILDER_MAIN_MAP = Object.freeze({
+  jjajang: "m1",
+  jjambbong: "m2",
+  bokkeumbap: "m4",
+  bibim: "m5",
+  jeyuk: "m6",
+  japchae: "m7",
+  mapa: "m8",
+});
+
+function mapSetBuilderMainId(rawMainId, upgradeId) {
+  if (upgradeId && SET_BUILDER_MAIN_MAP[upgradeId]) {
+    return SET_BUILDER_MAIN_MAP[upgradeId];
+  }
+  const id = String(rawMainId || "").trim();
+  if (SET_MAINS[id]) return id;
+  if (SET_BUILDER_MAIN_MAP[id]) return SET_BUILDER_MAIN_MAP[id];
+  return id;
+}
 
 const SETS = Object.freeze({
   solo: {
@@ -93,10 +116,12 @@ module.exports = {
   MENUS,
   OPTIONS,
   ORDER_TTL_MS,
+  SET_BUILDER_MAIN_MAP,
   SET_MAINS,
   SETS,
   getMenu,
   getOption,
   getSet,
   getSetMain,
+  mapSetBuilderMainId,
 };

@@ -149,6 +149,17 @@
       }
     }
 
+    async function loadRc1Checkout(orderId) {
+      const raw = sessionStorage.getItem(`jjajangnara-rc1-checkout:${orderId}`);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        console.warn("rc1 checkout parse failed:", error);
+        return null;
+      }
+    }
+
     async function loadPendingOrder(orderId) {
       const localRaw = localStorage.getItem(`${pendingOrderStoragePrefix}${orderId}`);
       if (localRaw) {
@@ -169,11 +180,15 @@
       return result.order;
     }
 
-    async function confirmPayment(paymentKey, orderId, amount, orderData) {
+    async function confirmPayment(paymentKey, orderId, amount, orderData, checkoutToken) {
+      const payload = checkoutToken
+        ? { paymentKey, orderId, amount: Number(amount), checkoutToken }
+        : { paymentKey, orderId, amount, order: orderData };
+
       const response = await fetch("/.netlify/functions/toss-confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentKey, orderId, amount, order: orderData }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -190,8 +205,8 @@
       summaryBox.innerHTML = `
         <div class="summary-row"><span>주문번호</span><strong>${paymentData.orderId}</strong></div>
         <div class="summary-row"><span>결제금액</span><strong>${won(paymentData.totalAmount)}</strong></div>
-        <div class="summary-row"><span>연락처</span><strong>${orderData.phone}</strong></div>
-        <div class="summary-row"><span>배달주소</span><strong>${orderData.address}</strong></div>
+        <div class="summary-row"><span>연락처</span><strong>${orderData.phone || "-"}</strong></div>
+        <div class="summary-row"><span>배달주소</span><strong>${orderData.address || "-"}</strong></div>
       `;
     }
 
@@ -205,12 +220,35 @@
         throw new Error("결제 완료 정보가 부족합니다. 주문 페이지에서 다시 시도해 주세요.");
       }
 
-      const orderData = await loadPendingOrder(orderId);
+      const rc1Checkout = await loadRc1Checkout(orderId);
+      let orderData;
+      let paymentData;
       const alreadySubmitted = localStorage.getItem(`${submittedOrderStoragePrefix}${orderId}`) === "done";
-      const paymentData = await confirmPayment(paymentKey, orderId, amount, orderData);
+
+      if (rc1Checkout && rc1Checkout.checkoutToken) {
+        // B1: RC1 — 서버 금액·토큰만 전달. 클라이언트 cart/total 비신뢰.
+        paymentData = await confirmPayment(
+          paymentKey,
+          orderId,
+          rc1Checkout.amount,
+          null,
+          rc1Checkout.checkoutToken
+        );
+        orderData = {
+          phone: paymentData.orderSummary?.phone || "",
+          address: paymentData.orderSummary?.address || "",
+          orderName: paymentData.orderSummary?.orderName || rc1Checkout.orderName || "짜장나라 주문",
+          total: paymentData.orderSummary?.total || rc1Checkout.amount,
+        };
+        sessionStorage.removeItem(`jjajangnara-rc1-checkout:${orderId}`);
+        sessionStorage.removeItem("jjajangnara-rc1-checkout-attempt");
+      } else {
+        orderData = await loadPendingOrder(orderId);
+        paymentData = await confirmPayment(paymentKey, orderId, amount, orderData);
+      }
 
       let formWarning = "";
-      if (!alreadySubmitted) {
+      if (!alreadySubmitted && orderData.phone && orderData.address) {
         try {
           await submitOrderForm(orderData, paymentData);
           localStorage.setItem(`${submittedOrderStoragePrefix}${orderId}`, "done");
@@ -218,6 +256,8 @@
           console.warn("Netlify Forms submit failed:", formError);
           formWarning = " (주문서 백업 저장은 재시도가 필요할 수 있습니다. 포스 접수는 완료되었습니다.)";
         }
+      } else if (!alreadySubmitted && rc1Checkout) {
+        localStorage.setItem(`${submittedOrderStoragePrefix}${orderId}`, "done");
       }
 
       localStorage.removeItem(`${pendingOrderStoragePrefix}${orderId}`);
