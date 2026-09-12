@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>입점 동의 서명 | 짜장나라</title>
+  <meta name="robots" content="noindex" />
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c0a08; --ink: #f7f1e6; --muted: #c4b8a4; --gold: #d9a441; --gold2: #f0d090;
+      --line: rgba(217,164,65,.28); --ok: #7dcea0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(217,164,65,.16), transparent 55%), var(--bg);
+      padding: 1.25rem;
+    }
+    main { width: min(420px, 100%); margin: 0 auto; display: grid; gap: 1rem; }
+    h1 { font-size: 1.55rem; color: var(--gold2); }
+    p, label, li { color: var(--muted); line-height: 1.55; font-size: .92rem; }
+    .card {
+      border: 1px solid var(--line); border-radius: 1rem; padding: 1rem;
+      background: rgba(255,248,235,.04); display: grid; gap: .7rem;
+    }
+    input, select {
+      width: 100%; min-height: 44px; border-radius: .7rem; border: 1px solid var(--line);
+      background: #15110d; color: var(--ink); padding: .6rem .75rem; font-size: 1rem;
+    }
+    .check { display: flex; gap: .55rem; align-items: flex-start; }
+    .check input { width: auto; min-height: auto; margin-top: .2rem; }
+    button {
+      min-height: 48px; border: 0; border-radius: 999px; font-weight: 700; font-size: 1rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #1a120c; cursor: pointer;
+    }
+    button.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+    .usb { display: none; gap: .55rem; }
+    .usb.on { display: grid; }
+    .msg { font-size: .88rem; }
+    .msg.ok { color: var(--ok); }
+    .msg.bad { color: #f0a0a0; }
+    .legal { font-size: .78rem; opacity: .9; }
+    .brand { letter-spacing: .08em; font-size: .72rem; color: rgba(240,208,144,.75); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">짜장나라 · 입점 동의</div>
+    <h1>서명만 하면 됩니다</h1>
+    <p id="lede">대표 또는 권한자가 확인하고 서명하세요.</p>
+
+    <section class="card" id="form-card">
+      <label>성명<input id="name" autocomplete="name" placeholder="홍길동" /></label>
+      <label>역할
+        <select id="role">
+          <option value="대표">대표</option>
+          <option value="권한자">권한자</option>
+          <option value="사업주">사업주</option>
+          <option value="대리인">대리인</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="auth" /><span>본인은 입점 동의에 대한 적법한 권한자입니다.</span></label>
+      <label class="check"><input type="checkbox" id="privacy" /><span>개인정보 처리에 동의합니다.</span></label>
+      <label class="check"><input type="checkbox" id="terms" /><span>이용약관에 동의합니다.</span></label>
+      <label class="check" id="connect-wrap" hidden><input type="checkbox" id="connect" /><span>템플릿 실연동에 동의합니다.</span></label>
+
+      <button type="button" class="ghost" id="usb-toggle">USB 인증서로 강화 (선택)</button>
+      <div class="usb" id="usb-box">
+        <label>인증서 지문<input id="thumb" placeholder="thumbprint" /></label>
+        <label>주체(CN)<input id="subject" placeholder="홍길동" /></label>
+        <label>challenge 서명값<input id="sig" placeholder="signed challenge" /></label>
+        <p class="legal" id="challenge-line"></p>
+      </div>
+
+      <button type="button" id="submit">동의하고 서명</button>
+      <p class="msg" id="msg"></p>
+      <ul class="legal" id="legal"></ul>
+    </section>
+
+    <section class="card" id="done" hidden>
+      <p class="msg ok">서명이 완료되었습니다.</p>
+      <p id="done-detail"></p>
+      <a class="ghost" href="free-template-onboard.html" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 1rem;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700;">입점 화면으로</a>
+    </section>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get("t") || "";
+    const api = "/.netlify/functions/arkaon-participation";
+    const msg = document.getElementById("msg");
+    let challenge = "";
+
+    function setMsg(text, ok) {
+      msg.textContent = text || "";
+      msg.className = "msg " + (ok ? "ok" : "bad");
+    }
+
+    async function load() {
+      if (!token) { setMsg("유효하지 않은 QR입니다.", false); return; }
+      const res = await fetch(api + "?action=consent-session&t=" + encodeURIComponent(token));
+      const json = await res.json();
+      if (!res.ok || !json.success) { setMsg(json.code || "세션을 불러오지 못했습니다.", false); return; }
+      const d = json.data;
+      if (d.status === "signed") {
+        document.getElementById("form-card").hidden = true;
+        document.getElementById("done").hidden = false;
+        document.getElementById("done-detail").textContent = "동의 수준: " + (d.attestation_public?.consent_level || "");
+        return;
+      }
+      if (d.status === "expired") { setMsg("QR이 만료되었습니다. 다시 발급받으세요.", false); return; }
+      document.getElementById("lede").textContent =
+        (d.shop_name ? d.shop_name + " · " : "") + "플랫폼 " + (d.platformIds || []).join(", ");
+      if ((d.scopes || []).includes("connect")) document.getElementById("connect-wrap").hidden = false;
+      challenge = d.challenge || "";
+      document.getElementById("challenge-line").textContent = challenge ? ("서명 대상 challenge: " + challenge) : "";
+      (d.legal?.ko || []).forEach((line) => {
+        const li = document.createElement("li");
+        li.textContent = line;
+        document.getElementById("legal").appendChild(li);
+      });
+    }
+
+    document.getElementById("usb-toggle").onclick = () => {
+      document.getElementById("usb-box").classList.toggle("on");
+    };
+
+    document.getElementById("submit").onclick = async () => {
+      const useUsb = document.getElementById("usb-box").classList.contains("on");
+      const body = {
+        token,
+        signerName: document.getElementById("name").value.trim(),
+        signerRole: document.getElementById("role").value,
+        authorityDeclared: document.getElementById("auth").checked,
+        acceptPrivacy: document.getElementById("privacy").checked,
+        acceptTerms: document.getElementById("terms").checked,
+        acceptConnect: document.getElementById("connect").checked,
+        method: useUsb ? "usb_cert" : "simple_sign",
+      };
+      if (useUsb) {
+        body.usb = {
+          certThumbprint: document.getElementById("thumb").value.trim(),
+          subjectCN: document.getElementById("subject").value.trim(),
+          signedChallenge: document.getElementById("sig").value.trim(),
+        };
+      }
+      setMsg("서명 처리 중…", true);
+      const res = await fetch(api + "?action=consent-sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setMsg(json.code || "서명에 실패했습니다.", false);
+        return;
+      }
+      document.getElementById("form-card").hidden = true;
+      document.getElementById("done").hidden = false;
+      document.getElementById("done-detail").textContent =
+        "동의 수준: " + (json.data?.attestation_public?.consent_level || "") +
+        " · 연결고리 진행 중…";
+      try {
+        const w = await fetch(api + "?action=link-weave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, sessionId: json.data?.session_id, runPeer: true }),
+        });
+        const wj = await w.json();
+        document.getElementById("done-detail").textContent =
+          "동의 수준: " + (json.data?.attestation_public?.consent_level || "") +
+          (wj.success ? " · 연결 준비 완료" : " · 동의 완료(연결은 배포·env 후)");
+      } catch (_) {
+        document.getElementById("done-detail").textContent =
+          "동의 수준: " + (json.data?.attestation_public?.consent_level || "") + " · 연결 재시도는 입점 화면에서";
+      }
+    };
+
+    load().catch(() => setMsg("네트워크 오류", false));
+  </script>
+</body>
+</html>

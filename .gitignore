@@ -8,3 +8,4 @@ pos-bridge/config.json
 pos-bridge/*.log
 pos-bridge/print-state.json
 downloads/_pos-bridge-staging/
+.arkaon/participation/consent-sessions.json

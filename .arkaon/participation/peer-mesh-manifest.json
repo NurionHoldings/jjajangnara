@@ -41,7 +41,7 @@
     "authHeader": "X-ARKAON-PEER-KEY",
     "envSecret": "ARKAON_PEER_MESH_SECRET",
     "fallbackEnvSecret": "DOSIRAK_AFFILIATE_CONNECTOR_SECRET|AIBAEBY_AFFILIATE_CONNECTOR_SECRET",
-    "actions": ["hello", "capabilities", "propose_onboard", "ack", "status"],
+    "actions": ["hello", "capabilities", "propose_onboard", "ack", "status", "link_request", "link_status"],
     "sessionTtlSeconds": 3600,
     "dnaLayer": "peer_mesh_dna"
   },
@@ -73,13 +73,16 @@
       "exchange_capabilities",
       "propose_onboard_playbook",
       "open_merchant_cta_page",
+      "consent_qr_sign",
       "request_merchant_consents",
+      "link_weave_after_consent",
       "post_affiliate_draft_or_bind",
       "issue_connect_assist_profile",
       "record_peer_mesh_dna",
       "await_hq_live_order_relay"
     ],
     "merchantCta": "/free-template-onboard.html",
+    "consentSign": "/consent-sign.html",
     "agentApi": "template-provision",
     "cli": "peer-mesh/provision.mjs"
   },

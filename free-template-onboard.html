@@ -4,178 +4,158 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
-  <link rel="icon" href="assets/images/logo.png.png" type="image/png" />
-  <title>무료 업종 템플릿 · 입점 유도 | 짜장나라</title>
-  <meta name="description" content="업종 템플릿을 무료로 만들고, 도시락.store·배비(aibaeby)에 Arkaon 교신으로 입점을 이어 갑니다." />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <title>입점 동의 QR | 짜장나라</title>
+  <meta name="description" content="대표/권한자가 QR을 스캔해 서명하면 입점 동의가 확보됩니다." />
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     :root {
-      --bg0: #0c0a08;
-      --bg1: #1a120c;
-      --ink: #f7f1e6;
-      --muted: #c4b8a4;
-      --gold: #d9a441;
-      --gold-soft: #f0d090;
-      --line: rgba(217, 164, 65, 0.28);
-      --glass: rgba(255, 248, 235, 0.04);
+      --bg0: #0c0a08; --bg1: #1a120c; --ink: #f7f1e6; --muted: #c4b8a4;
+      --gold: #d9a441; --gold2: #f0d090; --line: rgba(217,164,65,.28);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      min-height: 100vh;
-      color: var(--ink);
+      min-height: 100vh; color: var(--ink);
       font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
       background:
-        radial-gradient(ellipse 90% 60% at 70% 10%, rgba(217, 164, 65, 0.18), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 10% 90%, rgba(120, 60, 20, 0.35), transparent 50%),
+        radial-gradient(ellipse 90% 60% at 70% 10%, rgba(217,164,65,.18), transparent 55%),
         linear-gradient(165deg, var(--bg1), var(--bg0));
+      padding: clamp(1.5rem, 5vw, 3rem) 1.25rem;
     }
-    .shell {
-      width: min(720px, 100%);
-      margin: 0 auto;
-      padding: clamp(2rem, 6vw, 4rem) 1.25rem 3rem;
-      display: grid;
-      gap: 1.5rem;
+    main { width: min(480px, 100%); margin: 0 auto; display: grid; gap: 1.1rem; }
+    .brand { font-size: clamp(2rem, 7vw, 2.8rem); font-weight: 800; color: var(--gold2); }
+    p { color: var(--muted); line-height: 1.65; }
+    label { display: grid; gap: .35rem; font-size: .88rem; color: var(--muted); }
+    input, select {
+      min-height: 44px; border-radius: .75rem; border: 1px solid var(--line);
+      background: rgba(255,248,235,.04); color: var(--ink); padding: .55rem .75rem; font-size: 1rem;
     }
-    .brand {
-      font-size: clamp(2rem, 7vw, 3.1rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--gold-soft);
-      line-height: 1.15;
-      animation: rise 0.7s ease both;
+    .row { display: grid; gap: .7rem; }
+    button, a.btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+      padding: 0 1.2rem; border-radius: 999px; border: 0; font-weight: 700; font-size: .95rem;
+      cursor: pointer; text-decoration: none;
     }
-    .lede {
-      font-size: 1.05rem;
-      line-height: 1.7;
-      color: var(--muted);
-      max-width: 34em;
-      animation: rise 0.7s ease 0.08s both;
+    button.primary { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #1a120c; }
+    a.btn.ghost, button.ghost { border: 1px solid var(--line); color: var(--ink); background: transparent; }
+    #qr {
+      width: min(260px, 70vw); aspect-ratio: 1; margin: .4rem auto; padding: .75rem;
+      border-radius: 1rem; background: #fff; display: grid; place-items: center;
     }
-    .cta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 0.35rem;
-      animation: rise 0.7s ease 0.16s both;
-    }
-    a.btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 48px;
-      padding: 0.7rem 1.25rem;
-      border-radius: 999px;
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 0.95rem;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    a.btn:hover { transform: translateY(-1px); }
-    a.btn.primary {
-      background: linear-gradient(135deg, var(--gold), var(--gold-soft));
-      color: #1a120c;
-      box-shadow: 0 10px 28px rgba(217, 164, 65, 0.22);
-    }
-    a.btn.ghost {
-      border: 1px solid var(--line);
-      color: var(--ink);
-      background: var(--glass);
-    }
-    .note {
-      font-size: 0.85rem;
-      color: rgba(196, 184, 164, 0.85);
-      line-height: 1.6;
-      animation: rise 0.7s ease 0.24s both;
-    }
-    .platforms {
-      display: grid;
-      gap: 0.75rem;
-      margin-top: 0.5rem;
-      animation: rise 0.7s ease 0.2s both;
-    }
-    .plat {
-      padding: 1rem 1.1rem;
-      border: 1px solid var(--line);
-      border-radius: 1rem;
-      background: var(--glass);
-      display: grid;
-      gap: 0.35rem;
-    }
-    .plat strong { color: var(--gold-soft); font-size: 1.05rem; }
-    .plat span { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
-    .foot {
-      margin-top: 1rem;
-      font-size: 0.8rem;
-      color: rgba(196, 184, 164, 0.7);
-    }
-    .foot a { color: var(--gold-soft); }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: none; }
-    }
+    #qr canvas { max-width: 100%; height: auto !important; }
+    .status { text-align: center; font-weight: 700; color: var(--gold2); min-height: 1.4em; }
+    .hint { font-size: .85rem; text-align: center; }
+    .actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; }
   </style>
 </head>
 <body>
-  <main class="shell">
+  <main>
     <h1 class="brand">짜장나라</h1>
-    <p class="lede" id="lede">
-      업종 템플릿을 무료로 만들고, 계열 플랫폼에 바로 입점을 이어 가세요.
-      템플릿 Arkaon이 플랫폼 Arkaon과 교신해 구축을 돕습니다.
-    </p>
-    <div class="cta-row" id="cta-row">
-      <a class="btn primary" id="cta-dosirak" href="https://도시락.store/vendor-apply.html">도시락.store 입점</a>
-      <a class="btn ghost" id="cta-aibaeby" href="https://aibaeby.com/vendor-join.html">배비(aibaeby) 입점</a>
+    <p>QR을 보여 주면, 대표/권한자가 휴대폰으로 스캔·서명합니다. 그게 동의 확보입니다.</p>
+
+    <div class="row" id="setup">
+      <label>상호<input id="shop" placeholder="예: 짜장나라 세종본점" /></label>
+      <label>플랫폼
+        <select id="platform">
+          <option value="both">도시락 + 배비</option>
+          <option value="dosirak.store">도시락.store</option>
+          <option value="aibaeby.com">aibaeby</option>
+        </select>
+      </label>
+      <button class="primary" type="button" id="make">동의 QR 만들기</button>
     </div>
-    <div class="platforms" id="platforms" hidden></div>
-    <p class="note">
-      동의·서류는 사업주가 직접 완료합니다. 정산·지급·약관 대리수락은 하지 않습니다.
-      이미 입점한 매장은 템플릿 실연동(connect-assist) 경로를 사용하세요.
-    </p>
-    <p class="foot">
-      <a href="index.html">홈</a> ·
-      <a href="order.html">주문</a>
-    </p>
+
+    <div id="stage" hidden>
+      <div id="qr" aria-label="동의 서명 QR"></div>
+      <p class="status" id="status">서명 대기 중…</p>
+      <p class="hint" id="hint"></p>
+      <div class="actions">
+        <a class="btn ghost" id="open-sign" href="#" target="_blank" rel="noopener">서명 화면 열기</a>
+        <button class="ghost" type="button" id="reset">다시 만들기</button>
+      </div>
+    </div>
   </main>
   <script>
-    (async function () {
-      try {
-        const res = await fetch("/.netlify/functions/arkaon-participation?action=free-template-cta", {
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        const data = json && json.data;
-        if (!data) return;
-        if (data.support) {
-          document.getElementById("lede").textContent = data.headline + " " + data.support;
-        }
-        const list = document.getElementById("platforms");
-        const dosirak = (data.platforms || []).find((p) => p.id === "dosirak.store");
-        const aibaeby = (data.platforms || []).find((p) => p.id === "aibaeby.com");
-        if (dosirak && dosirak.onboardUrl) {
-          document.getElementById("cta-dosirak").href = dosirak.onboardUrl;
-        }
-        if (aibaeby && aibaeby.onboardUrl) {
-          document.getElementById("cta-aibaeby").href = aibaeby.onboardUrl;
-        }
-        if ((data.platforms || []).length) {
-          list.hidden = false;
-          list.innerHTML = data.platforms
-            .map(
-              (p) =>
-                '<div class="plat"><strong>' +
-                (p.displayName || p.id) +
-                "</strong><span>" +
-                (p.onboardUrl || "") +
-                "</span></div>"
-            )
-            .join("");
-        }
-      } catch (_) {
-        /* static fallbacks already in markup */
+    const api = "/.netlify/functions/arkaon-participation";
+    let sessionId = "";
+    let token = "";
+    let pollTimer = null;
+
+    function platforms() {
+      const v = document.getElementById("platform").value;
+      if (v === "both") return ["dosirak.store", "aibaeby.com"];
+      return [v];
+    }
+
+    async function makeQr() {
+      const res = await fetch(api + "?action=consent-qr-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopName: document.getElementById("shop").value.trim(),
+          platformIds: platforms(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert(json.code || "QR 생성 실패");
+        return;
       }
-    })();
+      const d = json.data;
+      sessionId = d.session_id;
+      const url = d.signUrl || (location.origin + d.signPath);
+      token = new URL(url, location.origin).searchParams.get("t") || "";
+      document.getElementById("setup").hidden = true;
+      document.getElementById("stage").hidden = false;
+      document.getElementById("open-sign").href = url;
+      document.getElementById("hint").textContent = "만료: " + (d.expires_at || "");
+      document.getElementById("qr").innerHTML = "";
+      const canvas = document.createElement("canvas");
+      document.getElementById("qr").appendChild(canvas);
+      await new Promise((resolve, reject) => {
+        QRCode.toCanvas(canvas, url, { width: 220, margin: 1 }, (err) => (err ? reject(err) : resolve()));
+      });
+      startPoll();
+    }
+
+    function startPoll() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        const res = await fetch(api + "?action=consent-qr-status&id=" + encodeURIComponent(sessionId));
+        const json = await res.json();
+        if (!json.success) return;
+        const st = json.data.status;
+        if (st === "signed") {
+          clearInterval(pollTimer);
+          document.getElementById("status").textContent = "서명 완료 · 연결 진행";
+          await weave();
+        } else if (st === "expired") {
+          clearInterval(pollTimer);
+          document.getElementById("status").textContent = "만료됨 · 다시 만들어 주세요";
+        }
+      }, 2500);
+    }
+
+    async function weave() {
+      const res = await fetch(api + "?action=link-weave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, token, runPeer: true }),
+      });
+      const json = await res.json();
+      const codes = (json.data?.results || []).map((r) => r.platformId + ":" + (r.code || (r.ok ? "OK" : "FAIL")));
+      document.getElementById("status").textContent = json.success
+        ? "동의·연결 준비 완료"
+        : "동의 완료 · 연결은 환경 설정 후 재시도";
+      document.getElementById("hint").textContent = codes.join(" · ") || (json.code || "");
+    }
+
+    document.getElementById("make").onclick = () => makeQr().catch((e) => alert(String(e.message || e)));
+    document.getElementById("reset").onclick = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      document.getElementById("stage").hidden = true;
+      document.getElementById("setup").hidden = false;
+    };
   </script>
 </body>
 </html>

@@ -333,6 +333,62 @@ async function run() {
   assert.equal(provisionData.peer.envBlocked, true);
   pass("API template-provision records peer env block without failing CTA");
 
+  delete process.env.ARKAON_DEV_FAIL_OPEN;
+  delete process.env.ARKAON_AGENT_HANDOFF_SECRET;
+  const consentCreate = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "consent-qr-create" },
+    headers: { host: "localhost" },
+    body: JSON.stringify({
+      shopName: "짜장나라 검증점",
+      platformIds: ["dosirak.store"],
+    }),
+  });
+  assert.equal(consentCreate.statusCode, 200);
+  const created = JSON.parse(consentCreate.body).data;
+  assert.ok(created.session_id);
+  assert.ok(created.signPath.includes("consent-sign.html"));
+  const token = new URL(created.signUrl || `https://x${created.signPath}`).searchParams.get("t");
+  assert.ok(token);
+
+  const sessionView = await arkaon.handler({
+    httpMethod: "GET",
+    queryStringParameters: { action: "consent-session", t: token },
+    headers: {},
+  });
+  assert.equal(sessionView.statusCode, 200);
+  assert.equal(JSON.parse(sessionView.body).data.status, "pending");
+
+  const signed = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "consent-sign" },
+    headers: { "user-agent": "verify" },
+    body: JSON.stringify({
+      token,
+      signerName: "홍길동",
+      signerRole: "대표",
+      authorityDeclared: true,
+      acceptPrivacy: true,
+      acceptTerms: true,
+      method: "simple_sign",
+    }),
+  });
+  assert.equal(signed.statusCode, 200);
+  const signedData = JSON.parse(signed.body).data;
+  assert.equal(signedData.status, "signed");
+  assert.equal(signedData.attestation_public.consent_level, "electronic_consent_record");
+  pass("consent QR create → sign (public)");
+
+  const weave = await arkaon.handler({
+    httpMethod: "POST",
+    queryStringParameters: { action: "link-weave" },
+    headers: {},
+    body: JSON.stringify({ sessionId: created.session_id, runPeer: false }),
+  });
+  assert.equal(weave.statusCode, 200);
+  assert.equal(JSON.parse(weave.body).data.mode, "link_weave");
+  pass("link-weave preview after consent");
+
   console.log("\nArkaon onboarding DNA verify: PASS");
 }
 

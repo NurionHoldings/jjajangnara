@@ -160,6 +160,17 @@
       "status": "closed",
       "announced_at": "2026-09-12T05:14:56.043Z",
       "closed_at": "2026-09-12T05:14:56.043Z"
+    },
+    {
+      "id": "32c23e03-caf7-485c-8835-50ee08f73f42",
+      "agent": "gpt",
+      "purpose": "hardening",
+      "areas": [],
+      "requests": [],
+      "status": "closed",
+      "work_split": [],
+      "announced_at": "2026-09-12T05:29:23.195Z",
+      "closed_at": "2026-09-12T05:29:23.196Z"
     }
   ],
   "change_dna": [
@@ -374,6 +385,26 @@
         "free-template-onboard.html"
       ],
       "created_at": "2026-09-12T05:14:56.043Z"
+    },
+    {
+      "id": "0e245d9e-35c4-4794-8efc-2832d857ea32",
+      "source": "gpt",
+      "area": "onboarding",
+      "summary": "동의 QR: 대표/권한자 스캔·서명으로 전자적 동의 기록. USB 인증서 선택 강화. 서명 후 link_weave. 법적 과대표시 금지.",
+      "return_point": "docs/ARKAON_CONSENT_QR.md",
+      "return_checklist": [
+        "deploy consent-sign.html",
+        "peer review beom"
+      ],
+      "contract_pointers": [
+        "docs/ARKAON_CONSENT_QR.md",
+        "netlify/functions/_arkaon-consent-qr.js"
+      ],
+      "path_prefixes": [
+        "consent-sign.html",
+        "free-template-onboard.html"
+      ],
+      "created_at": "2026-09-12T05:29:45.901Z"
     }
   ],
   "cross_checks": [
@@ -466,11 +497,21 @@
       "summary": "template-provision + merchant CTA peer review",
       "status": "pending",
       "announced_at": "2026-09-12T05:14:56.043Z"
+    },
+    {
+      "id": "62b7f07e-d19f-4e43-9452-7b9983f61914",
+      "author": "gpt",
+      "reviewer": "beom",
+      "target_type": "change_dna",
+      "target_id": "0e245d9e-35c4-4794-8efc-2832d857ea32",
+      "summary": "consent QR + link weave peer review",
+      "status": "pending",
+      "announced_at": "2026-09-12T05:29:45.901Z"
     }
   ],
   "wake": {
     "status": "awake",
-    "last_traffic_at": "2026-09-12T05:14:21.176Z"
+    "last_traffic_at": "2026-09-12T05:29:23.203Z"
   },
   "onboarding_dna": [
     {
@@ -1273,6 +1314,116 @@
         }
       },
       "created_at": "2026-09-12T05:14:21.065Z"
+    },
+    {
+      "id": "a91b2f01-64eb-427a-8795-c697469d2ae9",
+      "layer": "onboarding_dna",
+      "command": "도시락 가입 도와줘",
+      "ok": true,
+      "intent": "SIGNUP_UNBLOCK",
+      "platformId": "dosirak.store",
+      "code": null,
+      "planSummary": {
+        "mode": "propose_only",
+        "playbook": [
+          {
+            "order": 1,
+            "step": "resolve_platform",
+            "autoExecutable": true
+          },
+          {
+            "order": 2,
+            "step": "diagnose_blockers",
+            "autoExecutable": true
+          },
+          {
+            "order": 3,
+            "step": "prefill_allowed_fields",
+            "autoExecutable": true
+          },
+          {
+            "order": 4,
+            "step": "resume_incomplete_steps",
+            "autoExecutable": true
+          },
+          {
+            "order": 5,
+            "step": "never_bypass_required_consents",
+            "autoExecutable": true
+          },
+          {
+            "order": 6,
+            "step": "record_onboarding_dna",
+            "autoExecutable": true
+          }
+        ],
+        "nextActions": [
+          {
+            "type": "open_entry",
+            "url": "https://도시락.store/vendor-apply.html"
+          },
+          {
+            "type": "await_merchant_consent",
+            "required": true
+          },
+          {
+            "type": "hq_wire_connector",
+            "required": false,
+            "note": "커넥터 라이브/정산은 HQ 승인 후"
+          }
+        ],
+        "platform": {
+          "id": "dosirak.store",
+          "status": "connector_wired_draft"
+        }
+      },
+      "created_at": "2026-09-12T05:29:23.183Z"
+    },
+    {
+      "id": "80122475-301a-4c17-b0d7-67d6658135d2",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "dosirak.store",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/vendor-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:29:23.187Z"
+    },
+    {
+      "id": "05113e00-b401-40ec-be32-688252909f8c",
+      "layer": "onboarding_dna",
+      "kind": "execute_draft",
+      "platformId": "aibaeby.com",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "draft_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "statusCode": null,
+        "draft_status": null,
+        "resume_url": null,
+        "connector": {
+          "platformId": "aibaeby.com",
+          "platformStatus": "connector_wired_draft",
+          "connectorConfigured": false,
+          "draftEndpointConfigured": false,
+          "defaultPath": "/api/affiliate/merchant-draft"
+        }
+      },
+      "created_at": "2026-09-12T05:29:23.189Z"
     }
   ],
   "template_binds": [],
@@ -1318,6 +1469,20 @@
         "redacted": true
       },
       "created_at": "2026-09-12T05:14:21.068Z"
+    },
+    {
+      "id": "11f5641e-ad92-43ea-ac8a-536f2fe738f9",
+      "layer": "template_bind_dna",
+      "kind": "template_instance_bind",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "CONNECTOR_ENV_MISSING",
+      "bind_id": null,
+      "dry_run": true,
+      "planSummary": {
+        "redacted": true
+      },
+      "created_at": "2026-09-12T05:29:23.192Z"
     }
   ],
   "peer_mesh_dna": [
@@ -1409,6 +1574,84 @@
         }
       },
       "created_at": "2026-09-12T05:14:21.178Z"
+    },
+    {
+      "id": "c02e34de-5c47-4654-8b1c-47f1bc90c0af",
+      "layer": "peer_mesh_dna",
+      "action": "hello",
+      "session_id": "pm_local_test",
+      "template_instance_id": "jjajangnara-sejong",
+      "provisioning": "free_template_v1",
+      "ok": true,
+      "created_at": "2026-09-12T05:18:22.579Z"
+    },
+    {
+      "id": "210702cb-2f11-40b4-b4d8-7871e40104f5",
+      "layer": "peer_mesh_dna",
+      "action": "capabilities",
+      "session_id": "pm_local_test",
+      "template_instance_id": "jjajangnara-sejong",
+      "provisioning": "free_template_v1",
+      "ok": true,
+      "created_at": "2026-09-12T05:18:22.582Z"
+    },
+    {
+      "id": "273bec35-31a1-42c4-a1b6-d50b80b59c2d",
+      "layer": "peer_mesh_dna",
+      "action": "propose_onboard",
+      "session_id": "pm_local_test",
+      "template_instance_id": "jjajangnara-sejong",
+      "provisioning": "free_template_v1",
+      "ok": true,
+      "created_at": "2026-09-12T05:18:22.584Z"
+    },
+    {
+      "id": "78473643-eee8-4867-9942-e0ac47f90fb2",
+      "layer": "peer_mesh_dna",
+      "kind": "peer_handshake",
+      "platformId": "dosirak.store",
+      "ok": false,
+      "code": "PEER_ENV_MISSING",
+      "session_id": null,
+      "peerAction": "hello",
+      "planSummary": {},
+      "created_at": "2026-09-12T05:29:23.199Z"
+    },
+    {
+      "id": "dd60682c-317a-4895-9b7a-b153fa522f0b",
+      "layer": "peer_mesh_dna",
+      "kind": "template_provision",
+      "platformId": "dosirak.store",
+      "ok": true,
+      "code": "PEER_ENV_PARTIAL",
+      "session_id": "pm_mtxy3qpv_3f4a9622",
+      "planSummary": {
+        "instance_id": "tpl_mtxy3qpv_f5376d",
+        "peer": {
+          "ran": true,
+          "okCount": 0,
+          "total": 1,
+          "envBlocked": true,
+          "codes": [
+            {
+              "platformId": "dosirak.store",
+              "peerAction": "hello",
+              "ok": false,
+              "code": "PEER_ENV_MISSING"
+            }
+          ]
+        },
+        "cta": {
+          "localPage": "/free-template-onboard.html",
+          "platforms": [
+            {
+              "id": "dosirak.store",
+              "onboardUrl": "https://도시락.store/vendor-apply.html"
+            }
+          ]
+        }
+      },
+      "created_at": "2026-09-12T05:29:23.203Z"
     }
   ]
 }

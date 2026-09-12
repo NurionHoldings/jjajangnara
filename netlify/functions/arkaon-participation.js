@@ -42,6 +42,14 @@ const {
   buildMerchantCtaPack,
   provisionFreeTemplate,
 } = require("./_arkaon-template-provision");
+const {
+  createConsentSession,
+  getSessionById,
+  getSessionByToken,
+  publicSessionView,
+  signConsentSession,
+} = require("./_arkaon-consent-qr");
+const { weaveAfterConsent } = require("./_arkaon-link-weave");
 
 const STORE_PATH = path.join(process.cwd(), ".arkaon", "participation", "store.json");
 const HOST_PROFILE_PATH = path.join(process.cwd(), ".arkaon", "participation", "host_profile.json");
@@ -124,6 +132,110 @@ exports.handler = async (event) => {
   /** Public merchant CTA pack — no secrets, no agent auth */
   if (event.httpMethod === "GET" && action === "free-template-cta") {
     return json(200, { success: true, data: buildMerchantCtaPack() });
+  }
+
+  /** Public: load consent session for QR sign page (token-gated) */
+  if (event.httpMethod === "GET" && action === "consent-session") {
+    const t = String(qs.t || qs.token || "").trim();
+    const session = getSessionByToken(t);
+    if (!session) return json(404, { success: false, code: "SESSION_NOT_FOUND" });
+    return json(200, { success: true, data: publicSessionView(session) });
+  }
+
+  /** Public: create consent QR (installer tablet / simple UX). No secrets returned. */
+  if (event.httpMethod === "POST" && action === "consent-qr-create") {
+    let createBody = {};
+    if (event.body) {
+      try {
+        createBody = JSON.parse(event.body);
+      } catch (_) {
+        return json(400, { success: false, message: "invalid json" });
+      }
+    }
+    try {
+      assertNoTouchForExecute(createBody);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+    const created = createConsentSession({
+      event,
+      platformIds: createBody.platformIds || createBody.platforms || ["dosirak.store", "aibaeby.com"],
+      instanceId: createBody.instanceId || createBody.merchant?.instanceId,
+      shopName: createBody.shopName || createBody.merchant?.shopName,
+      requireConnect: createBody.requireConnect === true,
+    });
+    // DNA best-effort without agent store when unauthenticated path — still record if we load store after
+    return json(200, { success: true, data: created });
+  }
+
+  /** Public: representative signs via QR page (token-gated) */
+  if (event.httpMethod === "POST" && action === "consent-sign") {
+    let signBody = {};
+    if (event.body) {
+      try {
+        signBody = JSON.parse(event.body);
+      } catch (_) {
+        return json(400, { success: false, message: "invalid json" });
+      }
+    }
+    const t = String(signBody.token || qs.t || qs.token || "").trim();
+    const result = signConsentSession({ token: t, body: signBody, event });
+    return json(result.statusCode || 422, {
+      success: result.ok,
+      code: result.code,
+      data: result.session || null,
+      next: result.next || null,
+    });
+  }
+
+  /** Public poll by session id (fp only view) */
+  if (event.httpMethod === "GET" && action === "consent-qr-status") {
+    const sid = String(qs.id || qs.session_id || "").trim();
+    const session = getSessionById(sid);
+    if (!session) return json(404, { success: false, code: "SESSION_NOT_FOUND" });
+    return json(200, { success: true, data: publicSessionView(session) });
+  }
+
+  /**
+   * Public link-weave only after signed consent (no agent chat secrets).
+   * Body: { sessionId } or { token }
+   */
+  if (event.httpMethod === "POST" && action === "link-weave") {
+    let weaveBody = {};
+    if (event.body) {
+      try {
+        weaveBody = JSON.parse(event.body);
+      } catch (_) {
+        return json(400, { success: false, message: "invalid json" });
+      }
+    }
+    try {
+      assertNoTouchForExecute(weaveBody);
+    } catch (error) {
+      return json(403, { success: false, code: error.code || "GUARD_BLOCKED", message: error.message });
+    }
+    const woven = await weaveAfterConsent({
+      sessionId: weaveBody.sessionId || weaveBody.session_id,
+      token: weaveBody.token,
+      runPeer: weaveBody.runPeer !== false,
+    });
+    return json(woven.ok ? 200 : 422, {
+      success: woven.ok,
+      code: woven.code || (woven.ok ? "LINK_WEAVE_OK" : "LINK_WEAVE_FAIL"),
+      data: {
+        ...woven,
+        results: (woven.results || []).map((r) => ({
+          platformId: r.platformId,
+          ok: r.ok,
+          code: r.code,
+          grant_fp: r.grant_fp,
+          expires_at: r.expires_at,
+          next: r.next,
+          // grant raw once for vault; omit from DNA elsewhere
+          grant: r.grant || undefined,
+        })),
+      },
+    });
   }
 
   if (!authOk(event)) {
@@ -327,7 +439,7 @@ exports.handler = async (event) => {
 
   /**
    * Template Arkaon → Platform Arkaon peer mesh.
-   * Body: { platformId, peerAction: hello|capabilities|propose_onboard|ack|status, sessionId?, merchant? }
+   * Body: { platformId, peerAction: hello|capabilities|propose_onboard|ack|status|link_request, sessionId?, merchant? }
    */
   if (event.httpMethod === "POST" && action === "peer-mesh") {
     try {

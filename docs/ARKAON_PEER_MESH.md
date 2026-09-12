@@ -59,3 +59,14 @@ HQ/에이전트가 무료 템플릿을 만들면 `template-provision`이 인스�
 | 공개 카피 | `GET ?action=free-template-cta` (시크릿·인증 없음) |
 
 동의 전 draft/bind/정산은 실행하지 않는다.
+
+## 동의 QR (대표 서명)
+
+외형: **QR → 스캔 → 서명**. 문서: `docs/ARKAON_CONSENT_QR.md`  
+동의 후 `link_request` → 플랫폼 `link_grant`(단기). 채팅에 env 값을 넣지 않습니다.
+
+## Phase A 경계
+
+- 교신·제안·초안/바인드 오케스트레이션만
+- 정산·AML 라이브·약관 대리수락 금지
+- 비계열 플랫폼 스크래핑 금지

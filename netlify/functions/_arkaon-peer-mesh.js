@@ -169,6 +169,9 @@ async function postPeerHandshake({ platformId, action, sessionId, merchant, payl
       capabilities: body.capabilities || null,
       next: body.next || null,
       message: body.message || null,
+      grant: body.grant || null,
+      grant_fp: body.grant_fp || null,
+      expires_at: body.expires_at || null,
       platformId,
     };
   } catch (err) {
